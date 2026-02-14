@@ -1,6 +1,7 @@
 venv/
 .venv/
-uploads/
+uploads/*
+!uploads/.gitkeep
 *.pyc
 __pycache__/
 .env
