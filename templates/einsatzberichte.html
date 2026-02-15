@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Einsatzberichte</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      body { margin:0; min-height:100vh; background:linear-gradient(145deg,#161b24,#2a3443); }
+      .shell { width:min(1080px,95vw); margin:18px auto; }
+      .head { background:linear-gradient(120deg,#b42f1f,#8f2318); color:#fff; border-radius:12px; padding:16px; }
+      .cardx { background:#f5f5f5; border-radius:12px; padding:14px; margin-top:12px; }
+      .report { border:1px solid #ddd; border-radius:10px; padding:10px; background:#fff; margin-bottom:10px; }
+      .report pre { margin:6px 0 0; white-space:pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="head d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h1 class="h4 m-0">Einsatzberichte</h1>
+          <div class="small">Erfassen und Dokumentieren von Einsätzen</div>
+        </div>
+        <div class="d-flex gap-2">
+          <span class="badge text-bg-light">{{ name }}</span>
+          <a href="/menu" class="btn btn-light btn-sm">Zurück</a>
+        </div>
+      </section>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mt-2">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} mb-2">{{ message }}</div>
+          {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="cardx">
+        <h2 class="h6">Neuen Einsatzbericht erstellen</h2>
+        <form method="post" action="/einsatzberichte" class="row g-2">
+          {% if templates %}
+          <div class="col-12">
+            <label class="form-label">Vorlage (optional)</label>
+            <select id="templateSelect" class="form-select">
+              <option value="">Keine Vorlage</option>
+              {% for tpl in templates %}
+              <option value="{{ tpl.id }}" data-title="{{ tpl.title }}" data-body="{{ tpl.body|e }}">{{ tpl.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+          <div class="col-md-6">
+            <label class="form-label">Titel</label>
+            <input id="reportTitle" name="title" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Einsatznummer (optional)</label>
+            <input name="einsatznummer" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Bericht</label>
+            <textarea id="reportBody" name="body" rows="6" class="form-control" required></textarea>
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-dark">Speichern</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="cardx">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h6 m-0">Vorhandene Berichte</h2>
+          <span class="badge text-bg-secondary">{{ reports|length }}</span>
+        </div>
+        {% if reports %}
+          {% for r in reports %}
+            <div class="report">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <strong>{{ r.title }}</strong>
+                  {% if r.einsatznummer %}<span class="text-muted"> · Nr. {{ r.einsatznummer }}</span>{% endif %}
+                </div>
+                <small class="text-muted">{{ r.created_at }}</small>
+              </div>
+              <div class="small text-muted">Von {{ r.author_name }}</div>
+              <pre>{{ r.body }}</pre>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted m-0">Noch keine Einsatzberichte vorhanden.</p>
+        {% endif %}
+      </section>
+    </main>
+    <script>
+      const templateSelect = document.getElementById('templateSelect');
+      if (templateSelect) {
+        const titleInput = document.getElementById('reportTitle');
+        const bodyInput = document.getElementById('reportBody');
+        templateSelect.addEventListener('change', () => {
+          const opt = templateSelect.options[templateSelect.selectedIndex];
+          if (!opt || !opt.value) return;
+          const t = opt.getAttribute('data-title') || '';
+          const b = opt.getAttribute('data-body') || '';
+          if (!titleInput.value.trim()) titleInput.value = t;
+          if (!bodyInput.value.trim()) bodyInput.value = b;
+        });
+      }
+    </script>
+  </body>
+</html>

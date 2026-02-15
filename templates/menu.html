@@ -190,6 +190,18 @@
           <div class="label">Atemschutz</div>
         </a>
 
+        {% if can_access_reports %}
+        <a class="app" href="/einsatzberichte">
+          <div class="icon">EB</div>
+          <div class="label">Einsatzberichte</div>
+        </a>
+        {% else %}
+        <div class="app disabled">
+          <div class="icon">EB</div>
+          <div class="label">Einsatzberichte gesperrt</div>
+        </div>
+        {% endif %}
+
         {% if can_access_press %}
         <a class="app" href="/presse/bereich">
           <div class="icon">PR</div>

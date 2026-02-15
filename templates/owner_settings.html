@@ -45,6 +45,12 @@
           <input name="webhook_url_2" class="form-control" value="{{ settings.get('webhook_url_2', '') }}">
         </div>
 
+        <h2 class="h5">Einsatzberichte Webhook</h2>
+        <div class="mb-3">
+          <label class="form-label">Einsatzberichte Webhook URL (optional)</label>
+          <input name="einsatzberichte_webhook_url" class="form-control" value="{{ settings.get('einsatzberichte_webhook_url', '') }}">
+        </div>
+
         <h2 class="h5">Hauptmenü Design</h2>
         <div class="mb-3">
           <label class="form-label">Hintergrundbild URL (optional)</label>
@@ -129,6 +135,51 @@
         </div>
         <button class="btn btn-dark btn-sm mt-2" type="submit">Neue Rolle speichern</button>
       </form>
+
+      <hr>
+      <h2 class="h5">Einsatzberichte Vorlagen</h2>
+      <p class="text-muted mb-2">Owner kann Vorlagen erstellen, die in der Einsatzberichte-App genutzt werden.</p>
+
+      <form method="post" action="/owner/settings" class="border rounded p-3 bg-white mb-2">
+        <input type="hidden" name="action" value="save_report_template">
+        <h3 class="h6">Neue Vorlage</h3>
+        <div class="row g-2">
+          <div class="col-md-5">
+            <label class="form-label">Vorlagenname</label>
+            <input name="template_title" class="form-control" required>
+          </div>
+          <div class="col-md-7">
+            <label class="form-label">Vorlageninhalt</label>
+            <textarea name="template_body" rows="3" class="form-control" required></textarea>
+          </div>
+        </div>
+        <button class="btn btn-dark btn-sm mt-2" type="submit">Vorlage speichern</button>
+      </form>
+
+      {% for tpl in settings.get('einsatzbericht_templates', []) %}
+      <form method="post" action="/owner/settings" class="border rounded p-3 bg-white mb-2">
+        <input type="hidden" name="action" value="save_report_template">
+        <input type="hidden" name="template_id" value="{{ tpl.id }}">
+        <div class="row g-2">
+          <div class="col-md-5">
+            <label class="form-label">Vorlagenname</label>
+            <input name="template_title" class="form-control" value="{{ tpl.title }}" required>
+          </div>
+          <div class="col-md-7">
+            <label class="form-label">Vorlageninhalt</label>
+            <textarea name="template_body" rows="3" class="form-control" required>{{ tpl.body }}</textarea>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-outline-dark btn-sm" type="submit">Änderungen speichern</button>
+        </div>
+      </form>
+      <form method="post" action="/owner/settings" class="mb-2">
+        <input type="hidden" name="action" value="delete_report_template">
+        <input type="hidden" name="template_id" value="{{ tpl.id }}">
+        <button class="btn btn-outline-danger btn-sm" type="submit" onclick="return confirm('Vorlage wirklich löschen?');">Vorlage löschen</button>
+      </form>
+      {% endfor %}
     </main>
   </body>
 </html>

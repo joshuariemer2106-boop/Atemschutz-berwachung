@@ -58,6 +58,7 @@ UPLOAD_FOLDER = os.path.join(PRESS_STORAGE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 LEGACY_UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 PRESS_ARTICLES_FILE = os.path.join(PRESS_STORAGE_DIR, "press_articles.json")
+EINSATZ_REPORTS_FILE = os.path.join(PRESS_STORAGE_DIR, "einsatzberichte.json")
 PRESS_USERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_users.json")
 PRESS_SETTINGS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_settings.json")
 PRESS_SERVERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_servers.json")
@@ -170,6 +171,14 @@ def get_press_webhook_urls():
     return [url for url in [press_url_1, press_url_2] if url]
 
 
+def get_einsatzberichte_webhook_urls():
+    settings = load_press_settings_for(current_server_id())
+    report_url = (settings.get("einsatzberichte_webhook_url", "") or "").strip()
+    if not report_url:
+        report_url = os.getenv("DISCORD_EINSATZBERICHTE_WEBHOOK_URL", "")
+    return [url for url in [report_url] if url]
+
+
 @contextmanager
 def file_lock(lock_path, timeout_sec=8):
     start = time.time()
@@ -218,6 +227,32 @@ def save_press_articles(articles):
         with open(tmp_path, "w", encoding="utf-8") as fh:
             json.dump(articles, fh, ensure_ascii=False, indent=2)
         os.replace(tmp_path, PRESS_ARTICLES_FILE)
+
+
+def load_einsatz_reports():
+    if SUPABASE_ENABLED:
+        data = _supabase_get_value("einsatz_reports", [])
+        return data if isinstance(data, list) else []
+    if not os.path.exists(EINSATZ_REPORTS_FILE):
+        return []
+    try:
+        with open(EINSATZ_REPORTS_FILE, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def save_einsatz_reports(reports):
+    if SUPABASE_ENABLED:
+        _supabase_set_value("einsatz_reports", reports if isinstance(reports, list) else [])
+        return
+    lock_path = EINSATZ_REPORTS_FILE + ".lock"
+    with file_lock(lock_path):
+        tmp_path = EINSATZ_REPORTS_FILE + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            json.dump(reports, fh, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, EINSATZ_REPORTS_FILE)
 
 
 def is_press_logged_in():
@@ -580,6 +615,7 @@ def menu():
         server_name=session.get("server_name", ""),
         server_code=session.get("server_code", ""),
         menu_background_url=(settings.get("menu_background_url", "") or "").strip(),
+        can_access_reports=has_permission("atemschutz_access", role=role, server_id=server_id),
         can_access_press=has_permission("presse_access", role=role, server_id=server_id),
         can_access_staff_list=has_permission("staff_list_access", role=role, server_id=server_id),
         can_access_owner_settings=(role == "owner"),
@@ -855,10 +891,98 @@ def atemschutz():
     )
 
 
+@app.route("/einsatzberichte", methods=["GET", "POST"])
+def einsatzberichte():
+    if not is_press_logged_in():
+        return redirect("/presse")
+    if not has_permission("atemschutz_access"):
+        flash("Kein Zugriff auf Einsatzberichte.", "danger")
+        return redirect("/menu")
+
+    server_id = current_server_id()
+    settings = load_press_settings_for(server_id)
+    templates = settings.get("einsatzbericht_templates", [])
+    if not isinstance(templates, list):
+        templates = []
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        einsatznummer = request.form.get("einsatznummer", "").strip()
+        body = request.form.get("body", "").strip()
+        if not title or not body:
+            flash("Titel und Bericht sind erforderlich.", "danger")
+            return redirect("/einsatzberichte")
+
+        reports = load_einsatz_reports()
+        reports.append(
+            {
+                "id": str(int(datetime.now(tz=timezone.utc).timestamp() * 1000)),
+                "server_id": server_id,
+                "title": title,
+                "einsatznummer": einsatznummer,
+                "body": body,
+                "created_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
+                "author_name": session.get("presse_name", "Unbekannt"),
+            }
+        )
+        save_einsatz_reports(reports)
+
+        # Optional webhook forwarding for external logging channels.
+        webhook_urls = get_einsatzberichte_webhook_urls()
+        if webhook_urls:
+            content_lines = [
+                "Einsatzbericht",
+                f"Titel: {title}",
+            ]
+            if einsatznummer:
+                content_lines.append(f"Einsatznummer: {einsatznummer}")
+            content_lines.append(f"Von: {session.get('presse_name', 'Unbekannt')}")
+            content_lines.append("")
+            content_lines.append(body)
+            payload = {"content": "\n".join(content_lines)}
+
+            ok_count = 0
+            errors = []
+            for idx, hook in enumerate(webhook_urls, start=1):
+                try:
+                    resp = requests.post(hook, data=payload, timeout=12)
+                    if resp.status_code in (200, 204):
+                        ok_count += 1
+                    else:
+                        errors.append(f"Webhook {idx}: {resp.status_code}")
+                except Exception as exc:
+                    errors.append(f"Webhook {idx}: {exc}")
+
+            if ok_count > 0:
+                msg = f"Einsatzbericht gespeichert und an {ok_count} Webhook(s) gesendet."
+                if errors:
+                    msg += " Fehler: " + ", ".join(errors)
+                flash(msg, "success")
+            else:
+                flash("Einsatzbericht gespeichert, aber Webhook fehlgeschlagen: " + ", ".join(errors), "warning")
+        else:
+            flash("Einsatzbericht gespeichert.", "success")
+        return redirect("/einsatzberichte")
+
+    reports = [r for r in load_einsatz_reports() if r.get("server_id") == server_id]
+    reports.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    return render_template(
+        "einsatzberichte.html",
+        reports=reports,
+        templates=templates,
+        name=session.get("presse_name", "Unbekannt"),
+    )
+
+
 # Compatibility route for direct template URL usage (e.g. Live Server style links)
 @app.route("/templates/index.html", methods=["GET"])
 def atemschutz_template_alias():
     return redirect("/atemschutz")
+
+
+@app.route("/templates/einsatzberichte.html", methods=["GET"])
+def einsatzberichte_template_alias():
+    return redirect("/einsatzberichte")
 
 
 @app.route("/presse", methods=["GET", "POST"])
@@ -1380,10 +1504,70 @@ def owner_settings():
             flash(msg, "success")
             return redirect("/owner/settings")
 
+        if action == "save_report_template":
+            template_title = request.form.get("template_title", "").strip()
+            template_body = request.form.get("template_body", "").strip()
+            template_id = re.sub(r"[^a-z0-9_-]", "", request.form.get("template_id", "").strip().lower())
+
+            if not template_title or not template_body:
+                flash("Vorlagen-Titel und Inhalt sind erforderlich.", "danger")
+                return redirect("/owner/settings")
+
+            settings = load_press_settings_for(server_id)
+            templates = settings.get("einsatzbericht_templates", [])
+            if not isinstance(templates, list):
+                templates = []
+
+            if not template_id:
+                template_id = re.sub(r"[^a-z0-9_-]", "", template_title.lower().replace(" ", "_")) or str(uuid.uuid4())[:8]
+
+            existing = next((t for t in templates if (t.get("id", "").strip().lower() == template_id)), None)
+            payload = {
+                "id": template_id,
+                "title": template_title,
+                "body": template_body,
+                "updated_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
+                "updated_by": session.get("presse_username", ""),
+            }
+            if existing:
+                existing.update(payload)
+                msg = f"Vorlage '{template_title}' aktualisiert."
+            else:
+                templates.append(payload)
+                msg = f"Vorlage '{template_title}' gespeichert."
+
+            settings["einsatzbericht_templates"] = templates
+            settings["updated_at"] = datetime.now().strftime("%d.%m.%Y %H:%M")
+            settings["updated_by"] = session.get("presse_username", "")
+            save_press_settings_for(server_id, settings)
+            flash(msg, "success")
+            return redirect("/owner/settings")
+
+        if action == "delete_report_template":
+            template_id = re.sub(r"[^a-z0-9_-]", "", request.form.get("template_id", "").strip().lower())
+            if not template_id:
+                flash("Ungültige Vorlage.", "danger")
+                return redirect("/owner/settings")
+            settings = load_press_settings_for(server_id)
+            templates = settings.get("einsatzbericht_templates", [])
+            if not isinstance(templates, list):
+                templates = []
+            new_templates = [t for t in templates if (t.get("id", "").strip().lower() != template_id)]
+            if len(new_templates) == len(templates):
+                flash("Vorlage nicht gefunden.", "danger")
+                return redirect("/owner/settings")
+            settings["einsatzbericht_templates"] = new_templates
+            settings["updated_at"] = datetime.now().strftime("%d.%m.%Y %H:%M")
+            settings["updated_by"] = session.get("presse_username", "")
+            save_press_settings_for(server_id, settings)
+            flash("Vorlage gelöscht.", "success")
+            return redirect("/owner/settings")
+
         asw_webhook_url_1 = request.form.get("asw_webhook_url_1", "").strip()
         asw_webhook_url_2 = request.form.get("asw_webhook_url_2", "").strip()
         webhook_url_1 = request.form.get("webhook_url_1", "").strip()
         webhook_url_2 = request.form.get("webhook_url_2", "").strip()
+        einsatzberichte_webhook_url = request.form.get("einsatzberichte_webhook_url", "").strip()
         menu_background_url = request.form.get("menu_background_url", "").strip()
         menu_background_file = request.files.get("menu_background_file")
 
@@ -1408,6 +1592,9 @@ def owner_settings():
         deleted_roles = current_settings.get("deleted_roles", [])
         if not isinstance(deleted_roles, list):
             deleted_roles = []
+        einsatzbericht_templates = current_settings.get("einsatzbericht_templates", [])
+        if not isinstance(einsatzbericht_templates, list):
+            einsatzbericht_templates = []
 
         save_press_settings_for(
             server_id,
@@ -1417,9 +1604,11 @@ def owner_settings():
                 "asw_webhook_url_2": asw_webhook_url_2,
                 "webhook_url_1": webhook_url_1,
                 "webhook_url_2": webhook_url_2,
+                "einsatzberichte_webhook_url": einsatzberichte_webhook_url,
                 "menu_background_url": menu_background_url,
                 "role_configs": role_configs,
                 "deleted_roles": deleted_roles,
+                "einsatzbericht_templates": einsatzbericht_templates,
                 "updated_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
                 "updated_by": session.get("presse_username", ""),
             }
@@ -1436,6 +1625,10 @@ def owner_settings():
         settings["webhook_url_1"] = os.getenv("DISCORD_PRESS_WEBHOOK_URL", "")
     if not settings.get("webhook_url_2"):
         settings["webhook_url_2"] = os.getenv("DISCORD_PRESS_WEBHOOK_URL_2", "")
+    if not settings.get("einsatzberichte_webhook_url"):
+        settings["einsatzberichte_webhook_url"] = os.getenv("DISCORD_EINSATZBERICHTE_WEBHOOK_URL", "")
+    if not isinstance(settings.get("einsatzbericht_templates", []), list):
+        settings["einsatzbericht_templates"] = []
 
     return render_template(
         "owner_settings.html",
