@@ -238,6 +238,18 @@
         </div>
         {% endif %}
 
+        {% if can_access_email %}
+        <a class="app" href="/email">
+          <div class="icon">EM</div>
+          <div class="label">E-Mail</div>
+        </a>
+        {% else %}
+        <div class="app disabled">
+          <div class="icon">EM</div>
+          <div class="label">E-Mail gesperrt</div>
+        </div>
+        {% endif %}
+
         {% if can_access_owner_settings %}
         <a class="app" href="/owner/settings">
           <div class="icon">OP</div>

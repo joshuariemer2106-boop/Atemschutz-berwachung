@@ -63,6 +63,7 @@ PRESS_USERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_users.json")
 PRESS_SETTINGS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_settings.json")
 PRESS_SERVERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_servers.json")
 TIME_ENTRIES_FILE = os.path.join(PRESS_STORAGE_DIR, "time_entries.json")
+MAIL_MESSAGES_FILE = os.path.join(PRESS_STORAGE_DIR, "mail_messages.json")
 
 
 def _supabase_headers():
@@ -286,6 +287,32 @@ def save_time_entries(entries):
         os.replace(tmp_path, TIME_ENTRIES_FILE)
 
 
+def load_mail_messages():
+    if SUPABASE_ENABLED:
+        data = _supabase_get_value("mail_messages", [])
+        return data if isinstance(data, list) else []
+    if not os.path.exists(MAIL_MESSAGES_FILE):
+        return []
+    try:
+        with open(MAIL_MESSAGES_FILE, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def save_mail_messages(messages):
+    if SUPABASE_ENABLED:
+        _supabase_set_value("mail_messages", messages if isinstance(messages, list) else [])
+        return
+    lock_path = MAIL_MESSAGES_FILE + ".lock"
+    with file_lock(lock_path):
+        tmp_path = MAIL_MESSAGES_FILE + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            json.dump(messages, fh, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, MAIL_MESSAGES_FILE)
+
+
 def parse_utc_dt(value):
     if not value:
         return None
@@ -309,6 +336,13 @@ def format_duration_hhmm(total_seconds):
     hours = minutes // 60
     mins = minutes % 60
     return f"{hours:02d}:{mins:02d}"
+
+
+def format_local_datetime(value, fallback="-"):
+    dt = parse_utc_dt(value)
+    if not dt:
+        return fallback
+    return dt.astimezone().strftime("%d.%m.%Y %H:%M")
 
 
 def overlap_seconds(start_dt, end_dt, window_start, window_end):
@@ -696,6 +730,7 @@ def menu():
         can_access_press=has_permission("presse_access", role=role, server_id=server_id),
         can_access_staff_list=has_permission("staff_list_access", role=role, server_id=server_id),
         can_access_time_tracking=bool(session.get("presse_username", "").strip()),
+        can_access_email=bool(session.get("presse_username", "").strip()),
         can_access_owner_settings=(role == "owner"),
     )
 
@@ -823,6 +858,134 @@ def stempeluhr():
 @app.route("/templates/stempeluhr.html", methods=["GET"])
 def stempeluhr_template_alias():
     return redirect("/stempeluhr")
+
+
+@app.route("/email", methods=["GET", "POST"])
+def email_center():
+    if not is_press_logged_in():
+        return redirect(url_for("presse_login", next="/email"))
+
+    server_id = current_server_id()
+    role = get_press_role()
+    role_configs = get_role_configs(server_id)
+    username = (session.get("presse_username", "") or "").strip().lower()
+    if not username:
+        flash("E-Mail erfordert einen Account-Login mit Dienstnummer.", "danger")
+        return redirect("/menu")
+
+    users = [u for u in load_press_users() if u.get("server_id") == server_id]
+    users.sort(key=lambda u: (u.get("display_name", "").lower(), u.get("username", "").lower()))
+    user_map = {(u.get("username", "") or "").strip().lower(): u for u in users}
+    sender = user_map.get(username, {})
+    sender_name = sender.get("display_name", "")
+
+    messages = load_mail_messages()
+
+    if request.method == "POST":
+        action = (request.form.get("action", "") or "").strip().lower()
+        if action == "send":
+            recipient_username = (request.form.get("recipient_username", "") or "").strip().lower()
+            subject = (request.form.get("subject", "") or "").strip()
+            body = (request.form.get("body", "") or "").strip()
+            recipient = user_map.get(recipient_username)
+
+            if not recipient_username or not recipient:
+                flash("Empfänger wurde nicht gefunden.", "danger")
+                return redirect("/email")
+            if recipient_username == username:
+                flash("Du kannst keine E-Mail an dich selbst senden.", "warning")
+                return redirect("/email")
+            if not subject or not body:
+                flash("Betreff und Nachricht sind erforderlich.", "danger")
+                return redirect("/email")
+
+            messages.append(
+                {
+                    "id": str(uuid.uuid4()),
+                    "server_id": server_id,
+                    "sender_username": username,
+                    "sender_display_name": sender_name,
+                    "recipient_username": recipient_username,
+                    "recipient_display_name": recipient.get("display_name", ""),
+                    "subject": subject[:160],
+                    "body": body[:4000],
+                    "created_at_utc": format_utc_dt(datetime.now(tz=timezone.utc)),
+                    "read_at_utc": "",
+                }
+            )
+            save_mail_messages(messages)
+            flash("E-Mail wurde gesendet.", "success")
+            return redirect("/email")
+
+        if action == "mark_read":
+            msg_id = (request.form.get("message_id", "") or "").strip()
+            message = next(
+                (
+                    m
+                    for m in messages
+                    if m.get("id") == msg_id
+                    and m.get("server_id") == server_id
+                    and (m.get("recipient_username", "") or "").strip().lower() == username
+                ),
+                None,
+            )
+            if message and not parse_utc_dt(message.get("read_at_utc")):
+                message["read_at_utc"] = format_utc_dt(datetime.now(tz=timezone.utc))
+                save_mail_messages(messages)
+            return redirect("/email")
+
+    inbox = []
+    sent = []
+    unread_count = 0
+    for message in messages:
+        if message.get("server_id") != server_id:
+            continue
+        sender_user = (message.get("sender_username", "") or "").strip().lower()
+        recipient_user = (message.get("recipient_username", "") or "").strip().lower()
+        if sender_user != username and recipient_user != username:
+            continue
+        row = {
+            "id": message.get("id", ""),
+            "sender_username": sender_user,
+            "sender_display_name": message.get("sender_display_name", ""),
+            "recipient_username": recipient_user,
+            "recipient_display_name": message.get("recipient_display_name", ""),
+            "subject": (message.get("subject", "") or "").strip(),
+            "body": (message.get("body", "") or "").strip(),
+            "created_at_utc": message.get("created_at_utc", ""),
+            "created_at_label": format_local_datetime(message.get("created_at_utc")),
+            "read_at_label": format_local_datetime(message.get("read_at_utc"), fallback="Ungelesen"),
+            "is_unread": not parse_utc_dt(message.get("read_at_utc")),
+        }
+        if recipient_user == username:
+            inbox.append(row)
+            if row["is_unread"]:
+                unread_count += 1
+        if sender_user == username:
+            sent.append(row)
+
+    inbox.sort(key=lambda m: m.get("created_at_utc", ""), reverse=True)
+    sent.sort(key=lambda m: m.get("created_at_utc", ""), reverse=True)
+
+    recipients = [u for u in users if (u.get("username", "") or "").strip().lower() != username]
+    return render_template(
+        "email.html",
+        role=role,
+        role_label=role_configs.get(role, {}).get("label", role),
+        server_name=session.get("server_name", ""),
+        server_code=session.get("server_code", ""),
+        username=username,
+        display_name=sender_name,
+        recipients=recipients,
+        inbox=inbox,
+        sent=sent,
+        unread_count=unread_count,
+    )
+
+
+@app.route("/templates/email.html", methods=["GET"])
+def email_template_alias():
+    return redirect("/email")
 
 
 @app.route("/mitarbeiter", methods=["GET"])
