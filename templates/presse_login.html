@@ -1,0 +1,71 @@
+﻿<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Presse Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(145deg, #202020, #3d3d3d);
+      }
+      .box {
+        width: min(560px, 92vw);
+        background: #f3f3f3;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="box">
+      <h1 class="h3 mb-2">Presse Login</h1>
+      <p class="text-muted">Login mit Account (Benutzername + Passwort).</p>
+
+      {% if error %}
+      <div class="alert alert-danger">Login fehlgeschlagen. Benutzername oder Passwort falsch.</div>
+      {% endif %}
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% if not owner_exists %}
+      <div class="alert alert-warning">
+        Noch kein Owner-Account vorhanden.
+        <a href="/presse/owner/setup" class="alert-link">Owner jetzt erstellen</a>
+      </div>
+      {% endif %}
+
+      <form method="post" action="/presse">
+        <input type="hidden" name="next" value="{{ next_path }}">
+        <div class="mb-3">
+          <label for="server_code" class="form-label">Server-Code</label>
+          <input id="server_code" name="server_code" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label for="username" class="form-label">Benutzername</label>
+          <input id="username" name="username" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Passwort</label>
+          <input id="password" name="password" type="password" class="form-control" required>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-dark" type="submit">Anmelden</button>
+          <a href="/" class="btn btn-outline-secondary">Zurueck</a>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>
