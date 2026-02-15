@@ -507,6 +507,12 @@ def get_role_configs(server_id):
                 permissions = []
             valid_permissions = [p for p in permissions if any(p == code for code, _ in PERMISSIONS_CATALOG)]
             configs[key] = {"label": label, "permissions": valid_permissions}
+    deleted_roles = settings.get("deleted_roles", [])
+    if isinstance(deleted_roles, list):
+        for role_key in deleted_roles:
+            key = (role_key or "").strip().lower()
+            if key and key != "owner":
+                configs.pop(key, None)
     # Owner remains full-access by design.
     configs["owner"] = {
         "label": configs.get("owner", {}).get("label", "Owner"),
@@ -519,6 +525,15 @@ def save_role_configs_for(server_id, role_configs):
     settings = load_press_settings_for(server_id)
     settings["role_configs"] = role_configs
     save_press_settings_for(server_id, settings)
+
+
+def pick_fallback_role(role_configs, deleting_role):
+    available = [k for k in role_configs.keys() if k not in {"owner", deleting_role}]
+    if deleting_role != "asw" and "asw" in available:
+        return "asw"
+    if deleting_role != "mitglied" and "mitglied" in available:
+        return "mitglied"
+    return available[0] if available else "owner"
 
 
 def has_permission(permission_code, role=None, server_id=None):
@@ -1168,6 +1183,60 @@ def presse_user_update_identity(username):
     return redirect("/mitarbeiter")
 
 
+@app.route("/presse/user/<username>/delete", methods=["POST"])
+def presse_user_delete(username):
+    if not is_press_logged_in():
+        return redirect("/presse")
+    if not has_permission("staff_list_access"):
+        flash("Kein Zugriff auf Nutzerverwaltung.", "danger")
+        return redirect("/menu")
+
+    actor_role = get_press_role()
+    server_id = current_server_id()
+    if actor_role not in {"owner", "leitung"}:
+        flash("Nur Owner und Leitung dürfen Mitarbeiter kündigen.", "danger")
+        return redirect("/mitarbeiter")
+
+    users = load_press_users()
+    target = next(
+        (
+            u
+            for u in users
+            if u.get("server_id") == server_id
+            and u.get("username", "").strip().lower() == (username or "").strip().lower()
+        ),
+        None,
+    )
+    if not target:
+        flash("Mitarbeiter nicht gefunden.", "danger")
+        return redirect("/mitarbeiter")
+
+    actor_username = (session.get("presse_username", "") or "").strip().lower()
+    if target.get("username", "").strip().lower() == actor_username:
+        flash("Eigener Account kann nicht gekündigt werden.", "warning")
+        return redirect("/mitarbeiter")
+    if actor_role == "leitung" and target.get("role") == "owner":
+        flash("Leitung darf keine Owner kündigen.", "danger")
+        return redirect("/mitarbeiter")
+    if target.get("role") == "owner" and count_server_owners(users, server_id) <= 1:
+        flash("Mindestens ein Owner pro Wache muss bestehen bleiben.", "danger")
+        return redirect("/mitarbeiter")
+
+    removed_name = target.get("display_name") or target.get("username") or "Mitarbeiter"
+    target_username = (target.get("username", "") or "").strip().lower()
+    users = [
+        u
+        for u in users
+        if not (
+            u.get("server_id") == server_id
+            and u.get("username", "").strip().lower() == target_username
+        )
+    ]
+    save_press_users(users)
+    flash(f"{removed_name} wurde gekündigt.", "success")
+    return redirect("/mitarbeiter")
+
+
 @app.route("/presse/user/<username>/role", methods=["POST"])
 def presse_user_update_role(username):
     if not is_press_logged_in():
@@ -1257,8 +1326,58 @@ def owner_settings():
                 role_label = role_key
 
             role_configs[role_key] = {"label": role_label, "permissions": permissions}
-            save_role_configs_for(server_id, role_configs)
+            settings = load_press_settings_for(server_id)
+            deleted_roles = settings.get("deleted_roles", [])
+            if not isinstance(deleted_roles, list):
+                deleted_roles = []
+            settings["deleted_roles"] = [r for r in deleted_roles if (r or "").strip().lower() != role_key]
+            settings["role_configs"] = role_configs
+            settings["updated_at"] = datetime.now().strftime("%d.%m.%Y %H:%M")
+            settings["updated_by"] = session.get("presse_username", "")
+            save_press_settings_for(server_id, settings)
             flash(f"Rolle '{role_label}' gespeichert.", "success")
+            return redirect("/owner/settings")
+
+        if action == "delete_role":
+            role_key = re.sub(r"[^a-z0-9_-]", "", request.form.get("role_key", "").strip().lower())
+            if not role_key:
+                flash("Ungültige Rollen-ID.", "danger")
+                return redirect("/owner/settings")
+            if role_key == "owner":
+                flash("Owner-Rolle kann nicht gelöscht werden.", "danger")
+                return redirect("/owner/settings")
+            if role_key not in role_configs:
+                flash("Rolle nicht gefunden.", "danger")
+                return redirect("/owner/settings")
+
+            updated_configs = {k: v for k, v in role_configs.items() if k != role_key}
+            fallback_role = pick_fallback_role(updated_configs, role_key)
+
+            users = load_press_users()
+            changed = 0
+            for u in users:
+                if u.get("server_id") == server_id and (u.get("role", "").strip().lower() == role_key):
+                    u["role"] = fallback_role
+                    changed += 1
+            if changed:
+                save_press_users(users)
+
+            settings = load_press_settings_for(server_id)
+            deleted_roles = settings.get("deleted_roles", [])
+            if not isinstance(deleted_roles, list):
+                deleted_roles = []
+            deleted_set = {(r or "").strip().lower() for r in deleted_roles if (r or "").strip()}
+            deleted_set.add(role_key)
+            settings["deleted_roles"] = sorted(list(deleted_set))
+            settings["role_configs"] = updated_configs
+            settings["updated_at"] = datetime.now().strftime("%d.%m.%Y %H:%M")
+            settings["updated_by"] = session.get("presse_username", "")
+            save_press_settings_for(server_id, settings)
+
+            msg = f"Rolle '{role_key}' gelöscht."
+            if changed:
+                msg += f" {changed} Mitarbeiter auf Rolle '{fallback_role}' gesetzt."
+            flash(msg, "success")
             return redirect("/owner/settings")
 
         asw_webhook_url_1 = request.form.get("asw_webhook_url_1", "").strip()
@@ -1285,6 +1404,11 @@ def owner_settings():
             menu_background_file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             menu_background_url = f"/uploads/{filename}"
 
+        current_settings = load_press_settings_for(server_id)
+        deleted_roles = current_settings.get("deleted_roles", [])
+        if not isinstance(deleted_roles, list):
+            deleted_roles = []
+
         save_press_settings_for(
             server_id,
             {
@@ -1295,6 +1419,7 @@ def owner_settings():
                 "webhook_url_2": webhook_url_2,
                 "menu_background_url": menu_background_url,
                 "role_configs": role_configs,
+                "deleted_roles": deleted_roles,
                 "updated_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
                 "updated_by": session.get("presse_username", ""),
             }

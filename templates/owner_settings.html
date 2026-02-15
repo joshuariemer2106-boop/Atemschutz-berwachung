@@ -95,6 +95,11 @@
           </div>
           <button class="btn btn-outline-dark btn-sm mt-2" type="submit">Rolle speichern</button>
         </form>
+        <form method="post" action="/owner/settings" class="mb-2">
+          <input type="hidden" name="action" value="delete_role">
+          <input type="hidden" name="role_key" value="{{ role_key }}">
+          <button class="btn btn-outline-danger btn-sm" type="submit" onclick="return confirm('Rolle wirklich löschen?');">Rolle löschen</button>
+        </form>
         {% endif %}
       {% endfor %}
 

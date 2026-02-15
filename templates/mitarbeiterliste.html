@@ -99,6 +99,10 @@
                   <button type="submit" class="btn btn-outline-secondary btn-sm">Daten ändern</button>
                 </div>
               </form>
+
+              <form method="post" action="/presse/user/{{ u.username }}/delete" class="mt-2" onsubmit="return confirm('Mitarbeiter wirklich kündigen?');">
+                <button type="submit" class="btn btn-outline-danger btn-sm">Kündigen</button>
+              </form>
               {% endif %}
             </div>
           {% endfor %}
