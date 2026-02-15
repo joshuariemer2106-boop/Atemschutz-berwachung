@@ -1,0 +1,292 @@
+﻿<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BF München</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+      :root{--red:#c62828;--dark:#3b3b3b;--muted:#d7d7d7}
+      body{background:#111;margin:0;min-height:100vh}
+      .tablet{width:100%;height:100vh;max-width:none;background:linear-gradient(180deg,#e9e6e1 0%,#d6d2cc 100%);border-radius:0;padding:0;box-shadow:none;overflow:auto;display:flex;flex-direction:column}
+      .header{background:linear-gradient(180deg,var(--red),#a61f1f);color:#ffd84d;padding:22px 28px;display:flex;align-items:center;gap:20px}
+      .logo{width:80px;height:80px;flex:0 0 auto;margin-left:auto;display:flex;align-items:center;justify-content:center}
+      .logo img{max-width:100%;max-height:100%;border-radius:6px}
+      .title{font-size:42px;font-weight:800;letter-spacing:1px}
+      .sub{color:#fff;font-weight:700;margin-left:auto}
+      .content{padding:28px 36px 48px;flex:1;overflow:auto}
+      .top-row{display:flex;gap:16px;margin-bottom:18px}
+      .card-section{background:#f1f1f1;border-radius:4px;padding:16px;margin-bottom:18px}
+      .section-title{background:#5b5b5b;color:#fff;padding:12px 16px;border-radius:4px;font-weight:700;margin-bottom:14px;font-size:20px}
+      .trupp-header{display:grid;grid-template-columns:1.6fr 1fr 1fr 0.9fr;gap:14px;margin-bottom:10px;font-weight:700;color:#333;font-size:17px}
+      .trupp-row{display:grid;grid-template-columns:1.6fr 1fr 1fr 0.9fr;gap:14px;margin-bottom:12px;align-items:center}
+      .field-with-suffix{display:flex;align-items:center}
+      .field-with-suffix input{flex:1;margin:0}
+      .suffix{margin-left:12px;color:#555;font-weight:600;font-size:16px}
+      .bem-row{display:grid;grid-template-columns:1.6fr 1fr 1fr 0.9fr}
+      .footer{text-align:center;padding:16px 28px;color:#999;font-size:13px;margin-top:auto;border-top:1px solid #ddd;background:#f9f9f9}
+      input, select, textarea{border:1px solid #cfcfcf;background:#fff;padding:14px;border-radius:4px;font-size:17px;min-height:44px}
+      input[type=number]{-moz-appearance:textfield}
+      input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+      textarea{min-height:120px;resize:none;overflow:hidden}
+      .save-btn{display:block;width:70%;margin:26px auto 0;background:var(--red);color:#fff;font-weight:800;padding:24px;border-radius:8px;border:none;box-shadow:0 8px 0 #8f1a1a;font-size:20px;min-height:60px}
+      label.small{font-size:17px;color:#333;font-weight:600}
+      .muted{color:#666;font-size:17px}
+      @media (max-width:900px){
+        .tablet{height:auto;min-height:100vh;padding:0}
+        .header{padding:14px}
+        .content{padding:16px}
+        .title{font-size:22px}
+        label.small{font-size:14px}
+      }
+      @media (max-width:768px){
+        .header{padding:12px 14px}
+        .content{padding:18px 20px 40px}
+        .title{font-size:20px}
+        .header>div:first-child>div:first-child{font-size:11px}
+        .logo{width:60px;height:60px}
+        .top-row{flex-direction:column;gap:12px}
+        .top-row>div{width:100%!important}
+        .section-title{font-size:18px;padding:10px 12px}
+        .trupp-header{grid-template-columns:1fr 0.9fr 0.9fr 0.8fr;gap:10px;font-size:14px}
+        .trupp-row{grid-template-columns:1fr 0.9fr 0.9fr 0.8fr;gap:10px;margin-bottom:10px}
+        input, select, textarea{padding:12px;font-size:16px;min-height:40px}
+        .save-btn{font-size:18px;padding:20px;min-height:50px}
+        label.small{font-size:15px}
+      }
+      @media (max-width:480px){
+        .header{padding:10px 12px}
+        .content{padding:12px 14px 28px}
+        .title{font-size:18px}
+        .header>div:first-child>div:first-child{font-size:10px}
+        .logo{width:45px;height:45px}
+        .section-title{font-size:16px;padding:8px 10px;margin-bottom:12px}
+        .trupp-header{display:none}
+        .trupp-row{grid-template-columns:1fr;gap:8px;margin-bottom:8px}
+        .member-field{background:#fff;padding:10px;border-radius:4px;border-left:4px solid #c62828;position:relative}
+        .member-field::before{content:attr(data-label);display:block;font-weight:700;color:#666;font-size:13px;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+        .member-field input, .member-field select, .member-field textarea{padding:8px;font-size:15px;min-height:36px;width:100%;border:1px solid #cfcfcf}
+        input, select, textarea{padding:11px;font-size:15px;min-height:38px}
+        .save-btn{width:85%;font-size:16px;padding:18px;margin-top:20px;min-height:45px}
+        label.small{font-size:14px}
+        .suffix{font-size:14px}
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tablet">
+      <div id="screenshot-area">
+        <div class="header">
+          <div>
+            <div style="font-size:14px;opacity:0.95">BF MÜNCHEN</div>
+            <div class="title">ATEMSCHUTZÜBERWACHUNG</div>
+          </div>
+          <div class="sub">{{ user_name }} ({{ user_role }})</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="btn btn-light btn-sm disabled">Reiner Atemschutz</span>
+          </div>
+          <div class="logo"><img src="/static/bf_muenchen.png" alt="BF München"></div>
+        </div>
+
+        <div class="content">
+          <div id="alert-container"></div>
+          <form id="aswForm">
+        <div class="top-row">
+          <div style="flex:1">
+            <label class="small">Einsatznummer:</label>
+            <input name="einsatznummer" class="form-control" placeholder="Einsatznummer eingeben" required>
+          </div>
+          <div style="flex:1;margin-left:12px">
+            <label class="small">Einsatzstichwort:</label>
+            <input name="einsatzstichwort" class="form-control" placeholder="Stichwort eingeben" required>
+          </div>
+          <div style="width:220px;margin-left:12px">
+            <label class="small">Fahrzeug:</label>
+            <select name="fahrzeug" class="form-select" required>
+              <option value="">-- wählen --</option>
+              <option>ELW: 12/1</option>
+              <option>DLK: 30/1</option>
+              <option>HLF1: 40/1</option>
+              <option>TMF: 33/1</option>
+              <option>HLF2: 40/2</option>
+              <option>GW-L: 55/1</option>
+              <option>TLF: 23/1</option>
+              <option>MZF: 14/1</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="truppsContainer">
+          <!-- Trupps werden per JS eingefügt -->
+        </div>
+        <div style="text-align:right;margin-top:6px;margin-bottom:12px">
+          <button type="button" class="btn btn-sm" id="addTruppBtn">+ Trupp hinzufügen</button>
+        </div>
+
+        <div class="bem-row" style="margin-top:12px;">
+          <div>
+            <label class="small">Bemerkungen:</label>
+            <textarea name="bemerkungen" style="width:100%;min-height:120px"></textarea>
+          </div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+          </form>
+        </div>
+      </div>
+
+      <button type="submit" form="aswForm" class="save-btn">SPEICHERN</button>
+
+      <div class="footer">
+        © 2026 Münchner Feuerwehr · Atemschutzüberwachung
+      </div>
+
+        <script>
+          const truppsContainer = document.getElementById('truppsContainer');
+          const addTruppBtn = document.getElementById('addTruppBtn');
+          let truppCount = 0;
+
+          function createMemberRow(truppIndex, memberIndex){
+            const row = document.createElement('div');
+            row.className = 'trupp-row member-row';
+            row.innerHTML = `
+              <div class="member-field" data-label="Name"><input name="trupps[${truppIndex}][members][${memberIndex}][name]" placeholder="" required></div>
+              <div class="member-field" data-label="Startdruck"><div class="field-with-suffix"><input type="number" inputmode="numeric" name="trupps[${truppIndex}][members][${memberIndex}][start]" placeholder="" min="0" required><span class="suffix">bar</span></div></div>
+              <div class="member-field" data-label="Restdruck"><div class="field-with-suffix"><input type="number" inputmode="numeric" name="trupps[${truppIndex}][members][${memberIndex}][rest]" placeholder="" min="0" required><span class="suffix">bar</span></div></div>
+              <div class="member-field" data-label="Endzeit" style="display:flex;gap:8px;align-items:center"><input name="trupps[${truppIndex}][members][${memberIndex}][end]" placeholder="" required><button type=\"button\" class=\"btn-remove-member btn btn-outline-secondary btn-sm\">-</button></div>
+            `;
+            const removeBtn = row.querySelector('.btn-remove-member');
+            removeBtn.addEventListener('click', ()=>{ row.remove(); });
+            return row;
+          }
+
+          function createTrupp(){
+            const idx = truppCount++;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'card-section trupp-wrapper';
+            wrapper.dataset.index = idx;
+            wrapper.innerHTML = `
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div class="section-title">Trupp ${idx+1}</div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <button type="button" class="btn-add-member btn btn-sm">Mitglied +</button>
+                  <button type="button" class="btn-remove-trupp btn btn-sm">Trupp -</button>
+                </div>
+              </div>
+              <div class="trupp-header">
+                <div>Name</div>
+                <div>Startdruck</div>
+                <div>Restdruck</div>
+                <div>Endzeit</div>
+              </div>
+              <div class="members-container"></div>
+            `;
+
+            const membersContainer = wrapper.querySelector('.members-container');
+            const addMemberBtn = wrapper.querySelector('.btn-add-member');
+            const removeTruppBtn = wrapper.querySelector('.btn-remove-trupp');
+
+            // initial one member
+            membersContainer.appendChild(createMemberRow(idx, 0));
+
+            addMemberBtn.addEventListener('click', ()=>{
+              const mIndex = membersContainer.querySelectorAll('.member-row').length;
+              membersContainer.appendChild(createMemberRow(idx, mIndex));
+            });
+
+            removeTruppBtn.addEventListener('click', ()=>{
+              if(document.querySelectorAll('.trupp-wrapper').length>1){
+                wrapper.remove();
+                updateTruppTitles();
+              }
+            });
+
+            truppsContainer.appendChild(wrapper);
+            updateTruppTitles();
+          }
+
+          function updateTruppTitles(){
+            document.querySelectorAll('.trupp-wrapper').forEach((w,i)=>{
+              w.querySelector('.section-title').textContent = 'Trupp ' + (i+1);
+            });
+          }
+
+          addTruppBtn.addEventListener('click', createTrupp);
+
+          // init
+          createTrupp();
+
+          // auto-resize textarea
+          const bemerk = document.querySelector('textarea[name="bemerkungen"]');
+          function autoSize(el){
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+          }
+          if(bemerk){
+            bemerk.addEventListener('input', ()=> autoSize(bemerk));
+            // init size
+            setTimeout(()=>autoSize(bemerk), 50);
+          }
+
+          // Form submit: capture screenshot and send
+          const aswForm = document.getElementById('aswForm');
+          const alertContainer = document.getElementById('alert-container');
+
+          aswForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!aswForm.checkValidity()) {
+              aswForm.reportValidity();
+              return;
+            }
+            
+            const btnSave = document.querySelector('.save-btn');
+            const originalText = btnSave.textContent;
+            btnSave.textContent = 'Wird gesendet...';
+            btnSave.disabled = true;
+            alertContainer.innerHTML = '';
+
+            try {
+              // capture only the screenshot area (without SPEICHERN button)
+              const canvas = await html2canvas(document.getElementById('screenshot-area'), { 
+                allowTaint: true,
+                useCORS: true,
+                scale: 1.5
+              });
+              
+              // convert canvas to blob
+              canvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('screenshot', blob, 'screenshot.png');
+                
+                // send to backend
+                const response = await fetch('/atemschutz', { method: 'POST', body: formData });
+                
+                if (response.ok) {
+                  alertContainer.innerHTML = '<div class="alert alert-success">Eintrag erfolgreich gesendet!</div>';
+                  aswForm.reset();
+                  document.querySelectorAll('.trupp-wrapper').forEach((w, i) => {
+                    if (i > 0) w.remove();
+                  });
+                  setTimeout(() => { createTrupp(); }, 100);
+                } else {
+                  alertContainer.innerHTML = '<div class="alert alert-danger">Fehler beim Senden.</div>';
+                }
+              });
+            } catch (err) {
+              console.error('Screenshot error:', err);
+              alertContainer.innerHTML = '<div class="alert alert-danger">Fehler beim Erstellen des Screenshots: ' + err.message + '</div>';
+            } finally {
+              btnSave.textContent = originalText;
+              btnSave.disabled = false;
+            }
+          });
+        </script>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+

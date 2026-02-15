@@ -2,7 +2,7 @@ const overlay = document.getElementById("overlay");
 const frame = document.getElementById("appFrame");
 const closeBtn = document.getElementById("closeBtn");
 const resourceName =
-  typeof GetParentResourceName === "function" ? GetParentResourceName() : "fivem_tablet";
+  typeof GetParentResourceName === "function" ? GetParentResourceName() : "fivem_tablet_asw";
 
 function postNui(endpoint, payload) {
   return fetch(`https://${resourceName}/${endpoint}`, {
