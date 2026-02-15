@@ -29,7 +29,7 @@
       <p class="text-muted">Login für alle Systembereiche (Atemschutz, Presse, Verwaltung).</p>
 
       {% if error %}
-      <div class="alert alert-danger">Login fehlgeschlagen. Benutzername oder Passwort falsch.</div>
+      <div class="alert alert-danger">Login fehlgeschlagen. Dienstnummer/Vor- und Nachname oder Passwort falsch.</div>
       {% endif %}
 
       {% with messages = get_flashed_messages(with_categories=true) %}
@@ -52,11 +52,11 @@
         <div class="mb-3">
           <label for="server_code" class="form-label">Server-Code</label>
           <input id="server_code" name="server_code" class="form-control">
-          <div class="form-text">Optional. Wenn Benutzername eindeutig ist, geht Login auch ohne Server-Code.</div>
+          <div class="form-text">Optional. Wenn Dienstnummer oder Name eindeutig ist, geht Login auch ohne Server-Code.</div>
         </div>
         <div class="mb-3">
-          <label for="username" class="form-label">Benutzername</label>
-          <input id="username" name="username" class="form-control" required>
+          <label for="identifier" class="form-label">Dienstnummer oder Vor- und Nachname</label>
+          <input id="identifier" name="identifier" class="form-control" required>
         </div>
         <div class="mb-3">
           <label for="password" class="form-label">Passwort</label>
