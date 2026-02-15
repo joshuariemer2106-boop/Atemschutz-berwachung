@@ -1094,6 +1094,72 @@ def presse_user_create():
     return redirect("/presse/bereich")
 
 
+@app.route("/presse/user/<username>/identity", methods=["POST"])
+def presse_user_update_identity(username):
+    if not is_press_logged_in():
+        return redirect("/presse")
+    if not has_permission("staff_list_access"):
+        flash("Kein Zugriff auf Nutzerverwaltung.", "danger")
+        return redirect("/menu")
+
+    actor_role = get_press_role()
+    server_id = current_server_id()
+    if actor_role not in {"owner", "leitung"}:
+        flash("Nur Owner und Leitung dürfen Dienstnummer/Name ändern.", "danger")
+        return redirect("/mitarbeiter")
+
+    users = load_press_users()
+    target = next(
+        (
+            u
+            for u in users
+            if u.get("server_id") == server_id
+            and u.get("username", "").strip().lower() == (username or "").strip().lower()
+        ),
+        None,
+    )
+    if not target:
+        flash("Mitarbeiter nicht gefunden.", "danger")
+        return redirect("/mitarbeiter")
+
+    if actor_role == "leitung" and target.get("role") == "owner":
+        flash("Leitung darf keine Owner-Daten ändern.", "danger")
+        return redirect("/mitarbeiter")
+
+    new_username = request.form.get("dienstnummer", "").strip().lower()
+    new_display_name = request.form.get("full_name", "").strip()
+    if not new_username or not new_display_name:
+        flash("Dienstnummer und Vor-/Nachname sind erforderlich.", "danger")
+        return redirect("/mitarbeiter")
+
+    collision = next(
+        (
+            u
+            for u in users
+            if u.get("server_id") == server_id
+            and u is not target
+            and u.get("username", "").strip().lower() == new_username
+        ),
+        None,
+    )
+    if collision:
+        flash("Dienstnummer bereits vergeben.", "danger")
+        return redirect("/mitarbeiter")
+
+    old_username = target.get("username", "")
+    target["username"] = new_username
+    target["display_name"] = new_display_name
+    save_press_users(users)
+
+    actor_username = (session.get("presse_username", "") or "").strip().lower()
+    if actor_username == (old_username or "").strip().lower():
+        session["presse_username"] = new_username
+        session["presse_name"] = new_display_name
+
+    flash("Mitarbeiterdaten aktualisiert.", "success")
+    return redirect("/mitarbeiter")
+
+
 @app.route("/presse/user/<username>/role", methods=["POST"])
 def presse_user_update_role(username):
     if not is_press_logged_in():

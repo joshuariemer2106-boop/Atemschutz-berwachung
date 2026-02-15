@@ -70,7 +70,7 @@
                 {% if 'presse_access' in role_configs.get(u.role, {'permissions': []}).permissions %}Ja{% else %}Nein{% endif %}
               </div>
 
-                {% if can_manage_users and username != u.username %}
+              {% if can_manage_users and username != u.username %}
               <form method="post" action="/presse/user/{{ u.username }}/role" class="row g-2 mt-1">
                 <div class="col-sm-8">
                   <select name="new_role" class="form-select form-select-sm" required>
@@ -83,6 +83,20 @@
                 </div>
                 <div class="col-sm-4 d-grid">
                   <button type="submit" class="btn btn-outline-primary btn-sm">Upranken</button>
+                </div>
+              </form>
+              {% endif %}
+
+              {% if (role == 'owner' or role == 'leitung') and username != u.username %}
+              <form method="post" action="/presse/user/{{ u.username }}/identity" class="row g-2 mt-2">
+                <div class="col-md-4">
+                  <input name="dienstnummer" class="form-control form-control-sm" value="{{ u.username }}" placeholder="Dienstnummer" required>
+                </div>
+                <div class="col-md-5">
+                  <input name="full_name" class="form-control form-control-sm" value="{{ u.display_name }}" placeholder="Vor- und Nachname" required>
+                </div>
+                <div class="col-md-3 d-grid">
+                  <button type="submit" class="btn btn-outline-secondary btn-sm">Daten ändern</button>
                 </div>
               </form>
               {% endif %}
