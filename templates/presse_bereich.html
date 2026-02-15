@@ -182,21 +182,7 @@
                 <div class="col-12"><label class="form-label">Führung</label><textarea id="e_fuehrung" name="e_fuehrung" class="form-control" rows="2" data-required></textarea></div>
                 <div class="col-12"><label class="form-label">Absicherung</label><textarea id="e_absicherung" name="e_absicherung" class="form-control" rows="2" data-required></textarea></div>
                 <div class="col-12"><label class="form-label">Hinweis für Anwohner</label><textarea id="e_hinweis" name="e_hinweis" class="form-control" rows="2" data-required></textarea></div>
-                <div class="col-12">
-                  <label class="form-label">Bild anhängen (optional)</label>
-                  <input id="einsatz_image" name="einsatz_image" type="file" accept="image/png,image/jpeg,image/jpg,image/gif" class="form-control">
-                  <div class="d-flex gap-2 mt-2">
-                    <button id="startCameraBtn" type="button" class="btn btn-outline-dark btn-sm">Kamera starten</button>
-                    <button id="takePhotoBtn" type="button" class="btn btn-outline-danger btn-sm" disabled>Foto aufnehmen</button>
-                    <button id="stopCameraBtn" type="button" class="btn btn-outline-secondary btn-sm" disabled>Kamera stoppen</button>
-                  </div>
-                  <div id="cameraStatus" class="form-text">Du kannst Datei wählen oder direkt ein Foto aufnehmen.</div>
-                  <div id="cameraBox" class="mt-2 hidden">
-                    <video id="cameraPreview" class="w-100 rounded border" autoplay playsinline muted></video>
-                    <canvas id="cameraCanvas" class="hidden"></canvas>
-                  </div>
-                  <img id="capturedPreview" alt="Aufgenommenes Bild" class="img-fluid rounded border mt-2 hidden">
-                </div>
+                <div class="col-12"><label class="form-label">Bild anhängen (optional)</label><input id="einsatz_image" name="einsatz_image" type="file" accept="image/png,image/jpeg,image/jpg,image/gif" class="form-control"></div>
               </div>
             </div>
 
@@ -312,15 +298,6 @@
       const promotionRows = document.getElementById('promotionRows');
       const promotionRowTemplate = document.getElementById('promotionRowTemplate');
       const addPromotionRowBtn = document.getElementById('addPromotionRowBtn');
-      const imageInput = document.getElementById('einsatz_image');
-      const startCameraBtn = document.getElementById('startCameraBtn');
-      const takePhotoBtn = document.getElementById('takePhotoBtn');
-      const stopCameraBtn = document.getElementById('stopCameraBtn');
-      const cameraStatus = document.getElementById('cameraStatus');
-      const cameraBox = document.getElementById('cameraBox');
-      const cameraPreview = document.getElementById('cameraPreview');
-      const cameraCanvas = document.getElementById('cameraCanvas');
-      const capturedPreview = document.getElementById('capturedPreview');
       const promotionRankOrder = [
         'Brandmeister/in',
         'Oberbrandmeister/in',
@@ -337,79 +314,6 @@
         'Branddirektor/in',
         'Leitende/r Branddirektor/in',
       ];
-      let cameraStream = null;
-
-      function setCameraStatus(message) {
-        cameraStatus.textContent = message;
-      }
-
-      function setCameraButtonsState(running) {
-        startCameraBtn.disabled = running;
-        takePhotoBtn.disabled = !running;
-        stopCameraBtn.disabled = !running;
-      }
-
-      function stopCamera() {
-        if (cameraStream) {
-          cameraStream.getTracks().forEach((track) => track.stop());
-          cameraStream = null;
-        }
-        cameraPreview.srcObject = null;
-        cameraBox.classList.add('hidden');
-        setCameraButtonsState(false);
-      }
-
-      async function startCamera() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          setCameraStatus('Kamera wird in diesem Browser nicht unterstützt.');
-          return;
-        }
-        try {
-          stopCamera();
-          cameraStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' },
-            audio: false,
-          });
-          cameraPreview.srcObject = cameraStream;
-          cameraBox.classList.remove('hidden');
-          setCameraButtonsState(true);
-          setCameraStatus('Kamera läuft. Jetzt "Foto aufnehmen" drücken.');
-        } catch (err) {
-          setCameraStatus('Kein Kamerazugriff. Bitte Berechtigung erlauben.');
-        }
-      }
-
-      function takePhoto() {
-        if (!cameraStream) {
-          setCameraStatus('Bitte erst Kamera starten.');
-          return;
-        }
-        const width = cameraPreview.videoWidth || 1280;
-        const height = cameraPreview.videoHeight || 720;
-        cameraCanvas.width = width;
-        cameraCanvas.height = height;
-        const ctx = cameraCanvas.getContext('2d');
-        ctx.drawImage(cameraPreview, 0, 0, width, height);
-        cameraCanvas.toBlob((blob) => {
-          if (!blob) {
-            setCameraStatus('Foto konnte nicht erstellt werden.');
-            return;
-          }
-          if (typeof DataTransfer === 'undefined') {
-            setCameraStatus('Browser unterstützt Foto-Übernahme nicht. Bitte Datei-Upload nutzen.');
-            return;
-          }
-          const filename = `einsatz_${Date.now()}.jpg`;
-          const file = new File([blob], filename, { type: 'image/jpeg' });
-          const dt = new DataTransfer();
-          dt.items.add(file);
-          imageInput.files = dt.files;
-          capturedPreview.src = URL.createObjectURL(blob);
-          capturedPreview.classList.remove('hidden');
-          setCameraStatus(`Foto übernommen: ${filename}`);
-          stopCamera();
-        }, 'image/jpeg', 0.9);
-      }
 
       function setRequired(section, active) {
         section.querySelectorAll('[data-required]').forEach((el) => {
@@ -421,7 +325,6 @@
         const t = typeSelect.value;
         const einsatz = t === 'einsatz';
         const bef = t === 'befoerderung';
-        if (!einsatz) stopCamera();
         einsatzFields.classList.toggle('hidden', !einsatz);
         befFields.classList.toggle('hidden', !bef);
         setRequired(einsatzFields, einsatz);
@@ -448,20 +351,6 @@
       addPromotionRow();
       typeSelect.addEventListener('change', updateTemplateView);
       updateTemplateView();
-      startCameraBtn.addEventListener('click', startCamera);
-      takePhotoBtn.addEventListener('click', takePhoto);
-      stopCameraBtn.addEventListener('click', () => {
-        stopCamera();
-        setCameraStatus('Kamera gestoppt.');
-      });
-      imageInput.addEventListener('change', () => {
-        if (imageInput.files && imageInput.files[0]) {
-          capturedPreview.src = URL.createObjectURL(imageInput.files[0]);
-          capturedPreview.classList.remove('hidden');
-          setCameraStatus(`Datei gewählt: ${imageInput.files[0].name}`);
-        }
-      });
-      window.addEventListener('beforeunload', stopCamera);
 
       form.addEventListener('submit', (e) => {
         if (!form.checkValidity()) {
