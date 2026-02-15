@@ -145,6 +145,9 @@ app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.secret_key = os.getenv("FLASK_SECRET", "dev-secret")
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=3650)
+# Required for FiveM NUI iframe logins (cross-site cookie context).
+app.config["SESSION_COOKIE_SAMESITE"] = "None"
+app.config["SESSION_COOKIE_SECURE"] = True
 
 
 def allowed_file(filename):
