@@ -139,6 +139,11 @@ def find_server_by_code(servers, server_code):
     return next((s for s in servers if (s.get("server_code", "").strip().lower() == code)), None)
 
 
+def find_server_by_id(servers, server_id):
+    sid = (server_id or "").strip()
+    return next((s for s in servers if (s.get("id", "").strip() == sid)), None)
+
+
 def ensure_storage_migrated():
     servers = load_press_servers()
     users = load_press_users()
@@ -546,27 +551,48 @@ def atemschutz_template_alias():
 def presse_login():
     ensure_storage_migrated()
     users = load_press_users()
+    servers = load_press_servers()
     if request.method == "POST":
         server_code = request.form.get("server_code", "").strip().lower()
         username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
-        servers = load_press_servers()
         server = find_server_by_code(servers, server_code)
 
-        # New account-based login
-        user = next(
-            (
+        # Account-based login with server-code (preferred)
+        user = None
+        if server:
+            user = next(
+                (
+                    u
+                    for u in users
+                    if u.get("server_id") == server.get("id")
+                    and (
+                        (u.get("username", "").strip().lower() == username)
+                        or (u.get("display_name", "").strip().lower() == username)
+                    )
+                ),
+                None,
+            )
+
+        # Fallback login without server-code for convenience after logout:
+        # if exactly one user matches name+password globally, use that account.
+        if not user and not server_code:
+            candidates = [
                 u
                 for u in users
-                if server
-                and u.get("server_id") == server.get("id")
-                and (
+                if (
                     (u.get("username", "").strip().lower() == username)
                     or (u.get("display_name", "").strip().lower() == username)
                 )
-            ),
-            None,
-        )
+                and check_password_hash(u.get("password_hash", ""), password)
+            ]
+            if len(candidates) == 1:
+                user = candidates[0]
+                server = find_server_by_id(servers, user.get("server_id", ""))
+            elif len(candidates) > 1:
+                flash("Mehrere Konten gefunden. Bitte Server-Code eingeben.", "warning")
+                return redirect("/presse")
+
         if user and check_password_hash(user.get("password_hash", ""), password):
             session["presse_auth"] = True
             session["presse_role"] = user.get("role", "mitglied")
