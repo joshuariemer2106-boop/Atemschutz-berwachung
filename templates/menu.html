@@ -21,20 +21,18 @@
       body {
         margin: 0;
         min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         background:
           radial-gradient(900px 420px at 80% -20%, #2b313b 0%, transparent 70%),
           radial-gradient(700px 380px at -20% 120%, #1d222b 0%, transparent 65%),
           var(--bg-dark);
-        padding: 16px;
+        padding: 0;
       }
 
       .tablet {
-        width: min(900px, 96vw);
-        border-radius: 38px;
-        padding: 18px;
+        width: 100vw;
+        min-height: 100vh;
+        border-radius: 0;
+        padding: 0;
         background: linear-gradient(160deg, var(--tablet-shell), var(--tablet-shell-2));
         box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(255, 255, 255, 0.08);
         position: relative;
@@ -64,11 +62,11 @@
       }
 
       .screen {
-        border-radius: 26px;
+        border-radius: 0;
         overflow: hidden;
         background: var(--screen-bg);
-        border: 5px solid #0e1116;
-        min-height: min(72vh, 760px);
+        border: 0;
+        min-height: 100vh;
         display: flex;
         flex-direction: column;
       }
@@ -171,16 +169,6 @@
       }
 
       @media (max-width: 768px) {
-        .tablet {
-          border-radius: 28px;
-          padding: 12px;
-        }
-
-        .screen {
-          border-radius: 20px;
-          min-height: 78vh;
-        }
-
         .content {
           padding: 16px;
           gap: 10px;
@@ -194,7 +182,7 @@
       <section class="screen">
         <header class="screen-head">
           <h1 class="brand">BF MÜNCHEN</h1>
-          <p class="sub">HAUPTMENÜ</p>
+          <p class="sub">EINSATZSYSTEM</p>
         </header>
 
         <div class="content">
@@ -207,9 +195,9 @@
           <a class="menu-link asw" href="/atemschutz">ATEMSCHUTZUEBERWACHUNG</a>
 
           {% if can_access_press %}
-          <a class="menu-link presse" href="/presse/bereich">PRESSE</a>
+          <a class="menu-link presse" href="/presse/bereich">KOMMUNIKATION</a>
           {% else %}
-          <div class="menu-link presse disabled">PRESSE (GESPERRT)</div>
+          <div class="menu-link presse disabled">KOMMUNIKATION (GESPERRT)</div>
           {% endif %}
 
           {% if can_access_staff_list %}
@@ -219,7 +207,7 @@
           {% endif %}
 
           {% if can_access_owner_settings %}
-          <a class="menu-link owner" href="/owner/settings">OWNER EINSTELLUNGEN</a>
+          <a class="menu-link owner" href="/owner/settings">SYSTEM EINSTELLUNGEN</a>
           {% endif %}
 
           <div class="footer-actions">

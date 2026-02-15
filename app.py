@@ -448,8 +448,11 @@ def join():
         servers = load_press_servers()
         server = find_server_by_code(servers, server_code)
         users = load_press_users()
-        if not server or not username or not display_name or not password:
-            flash("Alle Felder sind erforderlich.", "danger")
+        if not server_code or not username or not display_name or not password or not password_confirm:
+            flash("Bitte alle Felder ausfüllen.", "danger")
+            return redirect("/join")
+        if not server:
+            flash("Server-Code wurde nicht gefunden.", "danger")
             return redirect("/join")
         if password != password_confirm:
             flash("Passwörter stimmen nicht überein.", "danger")
