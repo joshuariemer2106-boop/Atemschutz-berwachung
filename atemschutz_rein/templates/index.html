@@ -26,7 +26,20 @@
       .suffix{margin-left:12px;color:#555;font-weight:600;font-size:16px}
       .bem-row{display:grid;grid-template-columns:1.6fr 1fr 1fr 0.9fr}
       .footer{text-align:center;padding:16px 28px;color:#999;font-size:13px;margin-top:auto;border-top:1px solid #ddd;background:#f9f9f9}
-      input, select, textarea{border:1px solid #cfcfcf;background:#fff;padding:14px;border-radius:4px;font-size:17px;min-height:44px}
+      input, select, textarea{
+        border:2px solid #8d949d;
+        background:#fff;
+        padding:14px;
+        border-radius:6px;
+        font-size:17px;
+        min-height:44px;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+      }
+      input:focus, select:focus, textarea:focus{
+        outline:none;
+        border-color:#c62828;
+        box-shadow:0 0 0 3px rgba(198,40,40,0.2);
+      }
       input[type=number]{-moz-appearance:textfield}
       input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
       textarea{min-height:120px;resize:none;overflow:hidden}
@@ -66,7 +79,7 @@
         .trupp-row{grid-template-columns:1fr;gap:8px;margin-bottom:8px}
         .member-field{background:#fff;padding:10px;border-radius:4px;border-left:4px solid #c62828;position:relative}
         .member-field::before{content:attr(data-label);display:block;font-weight:700;color:#666;font-size:13px;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
-        .member-field input, .member-field select, .member-field textarea{padding:8px;font-size:15px;min-height:36px;width:100%;border:1px solid #cfcfcf}
+        .member-field input, .member-field select, .member-field textarea{padding:8px;font-size:15px;min-height:36px;width:100%;border:2px solid #8d949d}
         input, select, textarea{padding:11px;font-size:15px;min-height:38px}
         .save-btn{width:85%;font-size:16px;padding:18px;margin-top:20px;min-height:45px}
         label.small{font-size:14px}
@@ -82,7 +95,7 @@
             <div style="font-size:14px;opacity:0.95">BF MÜNCHEN</div>
             <div class="title">ATEMSCHUTZÜBERWACHUNG</div>
           </div>
-          <div class="sub">{{ user_name }} ({{ user_role }})</div>
+          <div class="sub">{{ user_name }}{% if user_role %} ({{ user_role }}){% endif %}</div>
           <div style="display:flex;gap:8px;align-items:center">
             <span class="btn btn-light btn-sm disabled">Reiner Atemschutz</span>
           </div>

@@ -23,7 +23,7 @@ def get_webhook_urls():
 
 @app.route("/", methods=["GET"])
 def start():
-    return render_template("index.html", user_name="Atemschutz", user_role="Standalone")
+    return render_template("index.html", user_name="Atemschutz")
 
 
 @app.route("/atemschutz", methods=["POST"])
