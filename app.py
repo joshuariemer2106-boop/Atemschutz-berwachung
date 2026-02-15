@@ -62,6 +62,7 @@ EINSATZ_REPORTS_FILE = os.path.join(PRESS_STORAGE_DIR, "einsatzberichte.json")
 PRESS_USERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_users.json")
 PRESS_SETTINGS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_settings.json")
 PRESS_SERVERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_servers.json")
+TIME_ENTRIES_FILE = os.path.join(PRESS_STORAGE_DIR, "time_entries.json")
 
 
 def _supabase_headers():
@@ -118,6 +119,7 @@ PERMISSIONS_CATALOG = [
     ("atemschutz_access", "Zugriff auf Atemschutz"),
     ("presse_access", "Zugriff auf Presse-Bereich"),
     ("staff_list_access", "Zugriff auf Mitarbeiterliste"),
+    ("time_tracking_access", "Zugriff auf Stempeluhr Auswertung"),
     ("create_users", "Mitarbeiter erstellen"),
     ("approve_articles", "Artikel freigeben"),
 ]
@@ -129,7 +131,7 @@ DEFAULT_ROLE_CONFIGS = {
     },
     "leitung": {
         "label": "Leitung",
-        "permissions": ["atemschutz_access", "presse_access", "staff_list_access", "create_users", "approve_articles"],
+        "permissions": ["atemschutz_access", "presse_access", "staff_list_access", "time_tracking_access", "create_users", "approve_articles"],
     },
     "mitglied": {
         "label": "Presse Mitglied",
@@ -256,6 +258,78 @@ def save_einsatz_reports(reports):
         with open(tmp_path, "w", encoding="utf-8") as fh:
             json.dump(reports, fh, ensure_ascii=False, indent=2)
         os.replace(tmp_path, EINSATZ_REPORTS_FILE)
+
+
+def load_time_entries():
+    if SUPABASE_ENABLED:
+        data = _supabase_get_value("time_entries", [])
+        return data if isinstance(data, list) else []
+    if not os.path.exists(TIME_ENTRIES_FILE):
+        return []
+    try:
+        with open(TIME_ENTRIES_FILE, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def save_time_entries(entries):
+    if SUPABASE_ENABLED:
+        _supabase_set_value("time_entries", entries if isinstance(entries, list) else [])
+        return
+    lock_path = TIME_ENTRIES_FILE + ".lock"
+    with file_lock(lock_path):
+        tmp_path = TIME_ENTRIES_FILE + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            json.dump(entries, fh, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, TIME_ENTRIES_FILE)
+
+
+def parse_utc_dt(value):
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def format_utc_dt(dt):
+    if not isinstance(dt, datetime):
+        return ""
+    return dt.astimezone(timezone.utc).isoformat()
+
+
+def format_duration_hhmm(total_seconds):
+    minutes = max(0, int(total_seconds // 60))
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+
+def overlap_seconds(start_dt, end_dt, window_start, window_end):
+    if not start_dt or not end_dt:
+        return 0
+    start = max(start_dt, window_start)
+    end = min(end_dt, window_end)
+    if end <= start:
+        return 0
+    return int((end - start).total_seconds())
+
+
+def current_open_time_entry(entries, server_id, username):
+    for entry in reversed(entries):
+        if (
+            entry.get("server_id") == server_id
+            and entry.get("username", "").strip().lower() == username
+            and not parse_utc_dt(entry.get("clock_out_utc"))
+        ):
+            return entry
+    return None
 
 
 def is_press_logged_in():
@@ -621,8 +695,134 @@ def menu():
         can_access_reports=has_permission("atemschutz_access", role=role, server_id=server_id),
         can_access_press=has_permission("presse_access", role=role, server_id=server_id),
         can_access_staff_list=has_permission("staff_list_access", role=role, server_id=server_id),
+        can_access_time_tracking=bool(session.get("presse_username", "").strip()),
         can_access_owner_settings=(role == "owner"),
     )
+
+
+@app.route("/stempeluhr", methods=["GET", "POST"])
+def stempeluhr():
+    if not is_press_logged_in():
+        return redirect(url_for("presse_login", next="/stempeluhr"))
+
+    server_id = current_server_id()
+    role = get_press_role()
+    role_configs = get_role_configs(server_id)
+    username = (session.get("presse_username", "") or "").strip().lower()
+    if not username:
+        flash("Stempeluhr erfordert einen Account-Login mit Dienstnummer.", "danger")
+        return redirect("/menu")
+
+    users = [u for u in load_press_users() if u.get("server_id") == server_id]
+    current_user = next((u for u in users if u.get("username", "").strip().lower() == username), None)
+    display_name = current_user.get("display_name", "") if current_user else ""
+    now_utc = datetime.now(tz=timezone.utc)
+
+    entries = load_time_entries()
+    open_entry = current_open_time_entry(entries, server_id, username)
+    action = request.form.get("action", "").strip().lower() if request.method == "POST" else ""
+    if action == "clock_in":
+        if open_entry:
+            flash("Du bist bereits eingestempelt.", "warning")
+        else:
+            entries.append(
+                {
+                    "id": str(uuid.uuid4()),
+                    "server_id": server_id,
+                    "username": username,
+                    "display_name": display_name,
+                    "clock_in_utc": format_utc_dt(now_utc),
+                    "clock_out_utc": "",
+                }
+            )
+            save_time_entries(entries)
+            flash("Erfolgreich eingestempelt.", "success")
+        return redirect("/stempeluhr")
+
+    if action == "clock_out":
+        if not open_entry:
+            flash("Du bist aktuell nicht eingestempelt.", "warning")
+        else:
+            open_entry["clock_out_utc"] = format_utc_dt(now_utc)
+            save_time_entries(entries)
+            flash("Erfolgreich ausgestempelt.", "success")
+        return redirect("/stempeluhr")
+
+    now_utc = datetime.now(tz=timezone.utc)
+    window_start = now_utc - timedelta(days=7)
+    own_7d_seconds = 0
+    for entry in entries:
+        if entry.get("server_id") != server_id:
+            continue
+        if entry.get("username", "").strip().lower() != username:
+            continue
+        start_dt = parse_utc_dt(entry.get("clock_in_utc"))
+        end_dt = parse_utc_dt(entry.get("clock_out_utc")) or now_utc
+        own_7d_seconds += overlap_seconds(start_dt, end_dt, window_start, now_utc)
+
+    open_entry = current_open_time_entry(entries, server_id, username)
+    active_since = parse_utc_dt(open_entry.get("clock_in_utc")) if open_entry else None
+
+    show_hr_view = has_permission("time_tracking_access", role=role, server_id=server_id) or has_permission(
+        "staff_list_access", role=role, server_id=server_id
+    )
+    hr_rows = []
+    if show_hr_view:
+        totals = {}
+        for user in users:
+            user_key = (user.get("username", "") or "").strip().lower()
+            if user_key:
+                totals[user_key] = {
+                    "display_name": user.get("display_name", ""),
+                    "username": user_key,
+                    "seconds": 0,
+                }
+
+        for entry in entries:
+            if entry.get("server_id") != server_id:
+                continue
+            user_key = (entry.get("username", "") or "").strip().lower()
+            if not user_key:
+                continue
+            start_dt = parse_utc_dt(entry.get("clock_in_utc"))
+            end_dt = parse_utc_dt(entry.get("clock_out_utc")) or now_utc
+            seconds = overlap_seconds(start_dt, end_dt, window_start, now_utc)
+            if seconds <= 0:
+                continue
+            row = totals.setdefault(
+                user_key,
+                {"display_name": entry.get("display_name", ""), "username": user_key, "seconds": 0},
+            )
+            if not row.get("display_name") and entry.get("display_name"):
+                row["display_name"] = entry.get("display_name")
+            row["seconds"] += seconds
+
+        for row in totals.values():
+            row["duration_hhmm"] = format_duration_hhmm(row.get("seconds", 0))
+            hr_rows.append(row)
+        hr_rows.sort(key=lambda r: (-r.get("seconds", 0), r.get("display_name", "").lower(), r.get("username", "")))
+
+    return render_template(
+        "stempeluhr.html",
+        role=role,
+        role_label=role_configs.get(role, {}).get("label", role),
+        server_name=session.get("server_name", ""),
+        server_code=session.get("server_code", ""),
+        username=username,
+        display_name=display_name,
+        is_clocked_in=bool(open_entry),
+        active_since_local=active_since.astimezone().strftime("%d.%m.%Y %H:%M") if active_since else "",
+        own_7d_hhmm=format_duration_hhmm(own_7d_seconds),
+        window_start_local=window_start.astimezone().strftime("%d.%m.%Y %H:%M"),
+        window_end_local=now_utc.astimezone().strftime("%d.%m.%Y %H:%M"),
+        show_hr_view=show_hr_view,
+        hr_rows=hr_rows,
+    )
+
+
+@app.route("/templates/stempeluhr.html", methods=["GET"])
+def stempeluhr_template_alias():
+    return redirect("/stempeluhr")
 
 
 @app.route("/mitarbeiter", methods=["GET"])

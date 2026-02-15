@@ -226,6 +226,18 @@
         </div>
         {% endif %}
 
+        {% if can_access_time_tracking %}
+        <a class="app" href="/stempeluhr">
+          <div class="icon">SZ</div>
+          <div class="label">Stempeluhr</div>
+        </a>
+        {% else %}
+        <div class="app disabled">
+          <div class="icon">SZ</div>
+          <div class="label">Stempeluhr gesperrt</div>
+        </div>
+        {% endif %}
+
         {% if can_access_owner_settings %}
         <a class="app" href="/owner/settings">
           <div class="icon">OP</div>
