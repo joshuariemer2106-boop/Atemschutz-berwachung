@@ -1,4 +1,4 @@
-﻿from flask import Flask, render_template, request, redirect, flash, url_for, session
+﻿from flask import Flask, render_template, request, redirect, flash, url_for, session, send_from_directory
 import os
 import requests
 from werkzeug.utils import secure_filename
@@ -284,6 +284,10 @@ def has_press_access():
     return get_press_role() in {"owner", "leitung", "mitglied"}
 
 
+def count_server_owners(users, server_id):
+    return sum(1 for u in users if u.get("server_id") == server_id and u.get("role") == "owner")
+
+
 @app.route("/", methods=["GET"])
 def start():
     ensure_storage_migrated()
@@ -310,6 +314,13 @@ def menu():
 @app.route("/templates/menu.html", methods=["GET"])
 def menu_template_alias():
     return redirect("/menu")
+
+
+@app.route("/uploads/<path:filename>", methods=["GET"])
+def uploaded_file(filename):
+    if not is_press_logged_in():
+        return redirect("/presse")
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
 @app.route("/join", methods=["GET", "POST"])
@@ -671,6 +682,8 @@ def presse_bereich():
     server_articles = [a for a in articles if a.get("server_id") == server_id]
     pending_articles = [a for a in server_articles if a.get("status") == "pending"]
     approved_articles = [a for a in server_articles if a.get("status") == "approved"]
+    server_users = [u for u in load_press_users() if u.get("server_id") == server_id]
+    server_users.sort(key=lambda u: (u.get("display_name", "").lower(), u.get("username", "").lower()))
     approved_articles.sort(key=lambda a: a.get("approved_at", ""), reverse=True)
     pending_articles.sort(key=lambda a: a.get("created_at", ""), reverse=True)
 
@@ -681,7 +694,8 @@ def presse_bereich():
         username=session.get("presse_username", ""),
         pending_articles=pending_articles,
         approved_articles=approved_articles,
-        users=[u for u in load_press_users() if u.get("server_id") == server_id],
+        users=server_users,
+        can_manage_users=(role in {"owner", "leitung"}),
         press_settings=load_press_settings_for(server_id),
     )
 
@@ -706,7 +720,7 @@ def presse_user_create():
     password = request.form.get("password", "")
     password_confirm = request.form.get("password_confirm", "")
 
-    allowed_roles = {"mitglied", "leitung", "owner"} if actor_role == "owner" else {"mitglied"}
+    allowed_roles = {"asw", "mitglied", "leitung", "owner"} if actor_role == "owner" else {"asw", "mitglied"}
     if role not in allowed_roles:
         flash("Ungültige Rolle.", "danger")
         return redirect("/presse/bereich")
@@ -733,6 +747,57 @@ def presse_user_create():
     )
     save_press_users(users)
     flash(f"Account '{username}' erstellt.", "success")
+    return redirect("/presse/bereich")
+
+
+@app.route("/presse/user/<username>/role", methods=["POST"])
+def presse_user_update_role(username):
+    if not is_press_logged_in():
+        return redirect("/presse")
+    if not has_press_access():
+        flash("Kein Zugriff auf Nutzerverwaltung.", "danger")
+        return redirect("/menu")
+
+    actor_role = get_press_role()
+    if actor_role not in {"owner", "leitung"}:
+        flash("Nur Owner/Leitung darf Rollen ändern.", "danger")
+        return redirect("/presse/bereich")
+
+    server_id = current_server_id()
+    users = load_press_users()
+    target = next(
+        (
+            u
+            for u in users
+            if u.get("server_id") == server_id
+            and u.get("username", "").strip().lower() == (username or "").strip().lower()
+        ),
+        None,
+    )
+    if not target:
+        flash("Mitarbeiter nicht gefunden.", "danger")
+        return redirect("/presse/bereich")
+
+    actor_username = session.get("presse_username", "").strip().lower()
+    if target.get("username", "").strip().lower() == actor_username:
+        flash("Eigene Rolle kann hier nicht geändert werden.", "warning")
+        return redirect("/presse/bereich")
+
+    new_role = request.form.get("new_role", "").strip().lower()
+    allowed_target_roles = {"asw", "mitglied", "leitung", "owner"} if actor_role == "owner" else {"asw", "mitglied"}
+    if new_role not in allowed_target_roles:
+        flash("Ungültige Zielrolle.", "danger")
+        return redirect("/presse/bereich")
+
+    old_role = target.get("role", "")
+    if old_role == "owner" and new_role != "owner":
+        if count_server_owners(users, server_id) <= 1:
+            flash("Mindestens ein Owner pro Wache muss bestehen bleiben.", "danger")
+            return redirect("/presse/bereich")
+
+    target["role"] = new_role
+    save_press_users(users)
+    flash(f"Rolle von '{target.get('username')}' geändert: {old_role} -> {new_role}.", "success")
     return redirect("/presse/bereich")
 
 
@@ -805,6 +870,18 @@ def presse_artikel_erstellen():
         flash("Titel und Artikeltext sind erforderlich.", "danger")
         return redirect("/presse/bereich")
 
+    image_filename = ""
+    image_original_name = ""
+    image_file = request.files.get("einsatz_image")
+    if image_file and image_file.filename:
+        if not allowed_file(image_file.filename):
+            flash("Ungültiges Bildformat. Erlaubt: png, jpg, jpeg, gif.", "danger")
+            return redirect("/presse/bereich")
+        image_original_name = image_file.filename
+        safe_name = secure_filename(image_file.filename)
+        image_filename = f"press_{int(datetime.now(tz=timezone.utc).timestamp())}_{os.urandom(4).hex()}_{safe_name}"
+        image_file.save(os.path.join(app.config["UPLOAD_FOLDER"], image_filename))
+
     server_id = current_server_id()
     articles = load_press_articles()
     article = {
@@ -818,6 +895,8 @@ def presse_artikel_erstellen():
         "created_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
         "approved_at": "",
         "approved_by": "",
+        "image_filename": image_filename,
+        "image_original_name": image_original_name,
     }
     articles.append(article)
     save_press_articles(articles)
@@ -852,11 +931,19 @@ def presse_artikel_freigeben(article_id):
         return redirect("/presse/bereich")
 
     content = format_press_message(article)
+    image_filename = (article.get("image_filename") or "").strip()
+    image_path = os.path.join(app.config["UPLOAD_FOLDER"], image_filename) if image_filename else ""
+    has_image = bool(image_filename and os.path.exists(image_path))
     ok_count = 0
     errors = []
     for idx, hook in enumerate(webhooks, start=1):
         try:
-            resp = requests.post(hook, data={"content": content}, timeout=12)
+            if has_image:
+                with open(image_path, "rb") as fh:
+                    files = {"file": (image_filename, fh)}
+                    resp = requests.post(hook, data={"content": content}, files=files, timeout=20)
+            else:
+                resp = requests.post(hook, data={"content": content}, timeout=12)
             if resp.status_code in (200, 204):
                 ok_count += 1
             else:
@@ -870,6 +957,8 @@ def presse_artikel_freigeben(article_id):
         article["approved_by"] = session.get("presse_name", "Leitung")
         save_press_articles(articles)
         msg = f"Artikel freigegeben und an {ok_count} Kanal/Kanäle gesendet."
+        if image_filename and not has_image:
+            msg += " Hinweis: Bilddatei war nicht mehr verfügbar."
         if errors:
             msg += " Fehler: " + ", ".join(errors)
         flash(msg, "success")
@@ -907,4 +996,5 @@ def presse_logout_template_alias():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=True)
+
 
