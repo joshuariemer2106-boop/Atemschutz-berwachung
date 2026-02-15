@@ -10,3 +10,5 @@ press_users.json
 press_settings.json
 press_settings.json
 press_servers.json
+!atemschutz_rein/__pycache__/
+!atemschutz_rein/__pycache__/*.pyc
