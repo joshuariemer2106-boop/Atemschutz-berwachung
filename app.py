@@ -932,8 +932,11 @@ def presse_owner_setup():
     if request.method == "POST":
         server_name = request.form.get("server_name", "").strip()
         server_code = normalize_server_code(request.form.get("server_code", ""))
-        username = request.form.get("username", "").strip().lower()
-        display_name = request.form.get("display_name", "").strip()
+        dienstnummer = request.form.get("dienstnummer", "").strip()
+        full_name = request.form.get("full_name", "").strip()
+        # Backward-compatible: old forms may still submit username/display_name.
+        username = (dienstnummer or request.form.get("username", "")).strip().lower()
+        display_name = (full_name or request.form.get("display_name", "")).strip()
         password = request.form.get("password", "")
         password_confirm = request.form.get("password_confirm", "")
         webhook_url_1 = request.form.get("webhook_url_1", "").strip()
@@ -957,7 +960,7 @@ def presse_owner_setup():
             flash("Server-Code existiert bereits.", "danger")
             return redirect("/presse/owner/setup")
         if next((u for u in users if u.get("username", "").strip().lower() == username), None):
-            flash("Benutzername existiert bereits.", "danger")
+            flash("Dienstnummer existiert bereits.", "danger")
             return redirect("/presse/owner/setup")
 
         server_id = str(uuid.uuid4())
