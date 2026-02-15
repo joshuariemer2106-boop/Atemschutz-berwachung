@@ -23,7 +23,7 @@
         {% endif %}
       {% endwith %}
 
-      <form method="post" action="/owner/settings" class="mb-4">
+      <form method="post" action="/owner/settings" class="mb-4" enctype="multipart/form-data">
         <input type="hidden" name="action" value="save_webhooks">
         <h2 class="h5 mt-2">Atemschutz Webhooks</h2>
         <div class="mb-2">
@@ -49,7 +49,14 @@
         <div class="mb-3">
           <label class="form-label">Hintergrundbild URL (optional)</label>
           <input name="menu_background_url" class="form-control" placeholder="https://..." value="{{ settings.get('menu_background_url', '') }}">
-          <div class="form-text">Wenn leer, wird der Standard-Hintergrund verwendet.</div>
+          <div class="form-text">Wenn leer, wird der Standard-Hintergrund verwendet. Ein Upload überschreibt die URL.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Hintergrundbild hochladen (optional)</label>
+          <input type="file" name="menu_background_file" class="form-control" accept="image/png,image/jpeg,image/jpg,image/gif">
+          {% if settings.get('menu_background_url', '') %}
+          <div class="form-text">Aktuell gesetzt: <a href="{{ settings.get('menu_background_url') }}" target="_blank">Hintergrund öffnen</a></div>
+          {% endif %}
         </div>
 
         <button class="btn btn-dark" type="submit">Speichern</button>

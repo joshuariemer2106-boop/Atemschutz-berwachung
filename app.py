@@ -1069,6 +1069,7 @@ def owner_settings():
         webhook_url_1 = request.form.get("webhook_url_1", "").strip()
         webhook_url_2 = request.form.get("webhook_url_2", "").strip()
         menu_background_url = request.form.get("menu_background_url", "").strip()
+        menu_background_file = request.files.get("menu_background_file")
 
         if not asw_webhook_url_1:
             flash("Atemschutz Webhook URL 1 ist erforderlich.", "danger")
@@ -1076,6 +1077,16 @@ def owner_settings():
         if not webhook_url_1:
             flash("Presse Webhook URL 1 ist erforderlich.", "danger")
             return redirect("/owner/settings")
+        if menu_background_file and menu_background_file.filename and not allowed_file(menu_background_file.filename):
+            flash("Ungültiges Bildformat für Hintergrund. Erlaubt: png, jpg, jpeg, gif.", "danger")
+            return redirect("/owner/settings")
+
+        # File upload has priority over URL input.
+        if menu_background_file and menu_background_file.filename and allowed_file(menu_background_file.filename):
+            safe_name = secure_filename(menu_background_file.filename)
+            filename = f"menu_bg_{int(datetime.now(tz=timezone.utc).timestamp())}_{os.urandom(4).hex()}_{safe_name}"
+            menu_background_file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            menu_background_url = f"/uploads/{filename}"
 
         save_press_settings_for(
             server_id,
