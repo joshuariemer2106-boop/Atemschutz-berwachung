@@ -18,17 +18,100 @@ WEBHOOK_URL_2 = os.getenv("DISCORD_WEBHOOK_URL_2")
 PRESS_PASSWORD = (os.getenv("PRESSE_PASSWORD") or "presse123").strip()
 PRESS_LEITUNG_PASSWORD = (os.getenv("PRESSE_LEITUNG_PASSWORD") or PRESS_PASSWORD).strip()
 PRESS_MITGLIED_PASSWORD = (os.getenv("PRESSE_MITGLIED_PASSWORD") or PRESS_PASSWORD).strip()
+SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").strip()
+SUPABASE_SERVICE_ROLE_KEY = (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+SUPABASE_TABLE = (os.getenv("SUPABASE_TABLE") or "app_kv").strip() or "app_kv"
+SUPABASE_ENABLED = bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
 
 BASE_DIR = os.path.dirname(__file__)
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXT = {"png", "jpg", "jpeg", "gif"}
-PRESS_STORAGE_DIR = os.getenv("PRESS_STORAGE_DIR", BASE_DIR).strip() or BASE_DIR
+
+
+def _dir_is_writable(path):
+    try:
+        os.makedirs(path, exist_ok=True)
+        probe = os.path.join(path, ".write_test")
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("ok")
+        os.remove(probe)
+        return True
+    except Exception:
+        return False
+
+
+def resolve_press_storage_dir():
+    configured = (os.getenv("PRESS_STORAGE_DIR") or "").strip()
+    if configured:
+        return configured
+
+    if os.name != "nt":
+        # Common persistent disk locations on Linux hosting platforms.
+        for candidate in ("/var/data/atemschutz", "/var/data", "/data/atemschutz", "/data"):
+            if _dir_is_writable(candidate):
+                return candidate
+    return BASE_DIR
+
+
+PRESS_STORAGE_DIR = resolve_press_storage_dir()
 os.makedirs(PRESS_STORAGE_DIR, exist_ok=True)
+UPLOAD_FOLDER = os.path.join(PRESS_STORAGE_DIR, "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+LEGACY_UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 PRESS_ARTICLES_FILE = os.path.join(PRESS_STORAGE_DIR, "press_articles.json")
 PRESS_USERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_users.json")
 PRESS_SETTINGS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_settings.json")
 PRESS_SERVERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_servers.json")
+
+
+def _supabase_headers():
+    return {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+    }
+
+
+def _supabase_table_url():
+    return f"{SUPABASE_URL.rstrip('/')}/rest/v1/{SUPABASE_TABLE}"
+
+
+def _supabase_get_value(key, default):
+    if not SUPABASE_ENABLED:
+        return default
+    try:
+        resp = requests.get(
+            _supabase_table_url(),
+            headers=_supabase_headers(),
+            params={"select": "value", "key": f"eq.{key}"},
+            timeout=12,
+        )
+        if resp.status_code != 200:
+            return default
+        data = resp.json()
+        if not isinstance(data, list) or not data:
+            return default
+        value = data[0].get("value", default)
+        return value
+    except Exception:
+        return default
+
+
+def _supabase_set_value(key, value):
+    if not SUPABASE_ENABLED:
+        return False
+    try:
+        headers = _supabase_headers()
+        headers["Prefer"] = "resolution=merge-duplicates,return=minimal"
+        resp = requests.post(
+            _supabase_table_url(),
+            headers=headers,
+            params={"on_conflict": "key"},
+            data=json.dumps([{"key": key, "value": value}], ensure_ascii=False),
+            timeout=12,
+        )
+        return resp.status_code in (200, 201, 204)
+    except Exception:
+        return False
 
 PERMISSIONS_CATALOG = [
     ("atemschutz_access", "Zugriff auf Atemschutz"),
@@ -112,6 +195,9 @@ def file_lock(lock_path, timeout_sec=8):
 
 
 def load_press_articles():
+    if SUPABASE_ENABLED:
+        data = _supabase_get_value("press_articles", [])
+        return data if isinstance(data, list) else []
     if not os.path.exists(PRESS_ARTICLES_FILE):
         return []
     try:
@@ -123,6 +209,9 @@ def load_press_articles():
 
 
 def save_press_articles(articles):
+    if SUPABASE_ENABLED:
+        _supabase_set_value("press_articles", articles if isinstance(articles, list) else [])
+        return
     lock_path = PRESS_ARTICLES_FILE + ".lock"
     with file_lock(lock_path):
         tmp_path = PRESS_ARTICLES_FILE + ".tmp"
@@ -188,6 +277,9 @@ def refresh_session_user():
 
 
 def load_press_servers():
+    if SUPABASE_ENABLED:
+        data = _supabase_get_value("press_servers", [])
+        return data if isinstance(data, list) else []
     if not os.path.exists(PRESS_SERVERS_FILE):
         return []
     try:
@@ -199,6 +291,9 @@ def load_press_servers():
 
 
 def save_press_servers(servers):
+    if SUPABASE_ENABLED:
+        _supabase_set_value("press_servers", servers if isinstance(servers, list) else [])
+        return
     lock_path = PRESS_SERVERS_FILE + ".lock"
     with file_lock(lock_path):
         tmp_path = PRESS_SERVERS_FILE + ".tmp"
@@ -268,6 +363,13 @@ def ensure_storage_migrated():
 
 
 def load_press_settings():
+    if SUPABASE_ENABLED:
+        data = _supabase_get_value("press_settings", [])
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return [data]
+        return []
     if not os.path.exists(PRESS_SETTINGS_FILE):
         return []
     try:
@@ -284,6 +386,10 @@ def load_press_settings():
 
 
 def save_press_settings(settings_list):
+    if SUPABASE_ENABLED:
+        payload = settings_list if isinstance(settings_list, list) else []
+        _supabase_set_value("press_settings", payload)
+        return
     lock_path = PRESS_SETTINGS_FILE + ".lock"
     with file_lock(lock_path):
         tmp_path = PRESS_SETTINGS_FILE + ".tmp"
@@ -313,6 +419,9 @@ def save_press_settings_for(server_id, settings):
 
 
 def load_press_users():
+    if SUPABASE_ENABLED:
+        data = _supabase_get_value("press_users", [])
+        return data if isinstance(data, list) else []
     if not os.path.exists(PRESS_USERS_FILE):
         return []
     try:
@@ -324,6 +433,9 @@ def load_press_users():
 
 
 def save_press_users(users):
+    if SUPABASE_ENABLED:
+        _supabase_set_value("press_users", users if isinstance(users, list) else [])
+        return
     lock_path = PRESS_USERS_FILE + ".lock"
     with file_lock(lock_path):
         tmp_path = PRESS_USERS_FILE + ".tmp"
@@ -489,7 +601,13 @@ def mitarbeiterliste_template_alias():
 def uploaded_file(filename):
     if not is_press_logged_in():
         return redirect("/presse")
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+    primary_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    if os.path.exists(primary_path):
+        return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+    legacy_path = os.path.join(LEGACY_UPLOAD_FOLDER, filename)
+    if os.path.exists(legacy_path):
+        return send_from_directory(LEGACY_UPLOAD_FOLDER, filename)
+    return ("Datei nicht gefunden.", 404)
 
 
 @app.route("/join", methods=["GET", "POST"])
