@@ -193,26 +193,32 @@
       <div class="camera-dot"></div>
       <section class="screen">
         <header class="screen-head">
-          <h1 class="brand">BF MUENCHEN</h1>
-          <p class="sub">HAUPTMENUE</p>
+          <h1 class="brand">BF MÜNCHEN</h1>
+          <p class="sub">HAUPTMENÜ</p>
         </header>
 
         <div class="content">
           <div class="meta">
-            <span class="chip">Rolle: {{ role }}</span>
+            <span class="chip">Rolle: {{ role_label }}</span>
             {% if server_name %}<span class="chip">Server: {{ server_name }}</span>{% endif %}
             {% if server_code %}<span class="chip">Code: {{ server_code }}</span>{% endif %}
           </div>
 
           <a class="menu-link asw" href="/atemschutz">ATEMSCHUTZUEBERWACHUNG</a>
 
-          {% if role in ['owner', 'leitung', 'mitglied'] %}
+          {% if can_access_press %}
           <a class="menu-link presse" href="/presse/bereich">PRESSE</a>
           {% else %}
           <div class="menu-link presse disabled">PRESSE (GESPERRT)</div>
           {% endif %}
 
-          {% if role == 'owner' %}
+          {% if can_access_staff_list %}
+          <a class="menu-link presse" href="/mitarbeiter">MITARBEITERLISTE</a>
+          {% else %}
+          <div class="menu-link presse disabled">MITARBEITERLISTE (GESPERRT)</div>
+          {% endif %}
+
+          {% if can_access_owner_settings %}
           <a class="menu-link owner" href="/owner/settings">OWNER EINSTELLUNGEN</a>
           {% endif %}
 
@@ -226,4 +232,3 @@
     </main>
   </body>
 </html>
-

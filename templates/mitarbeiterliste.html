@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mitarbeiterliste</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(140deg, #1a1e25, #2c3440);
+      }
+      .shell {
+        width: min(980px, 95vw);
+        margin: 20px auto;
+      }
+      .head {
+        background: linear-gradient(120deg, #b61f1f, #8e1414);
+        color: #fff;
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .cardx {
+        background: #f5f5f5;
+        border-radius: 12px;
+        padding: 14px;
+        margin-top: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="head d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h1 class="h4 m-0">Mitarbeiterliste</h1>
+          <div class="small">Rollen und Rechte</div>
+        </div>
+        <a href="/menu" class="btn btn-light btn-sm">Zurück zum Hauptmenü</a>
+      </section>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mt-2">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} mb-2">{{ message }}</div>
+          {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="cardx">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h6 m-0">Alle Mitarbeiter</h2>
+          <span class="badge text-bg-secondary">{{ users|length }}</span>
+        </div>
+
+        {% if users %}
+          {% for u in users %}
+            <div class="border rounded p-2 mb-2 bg-white">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <strong>{{ u.display_name }}</strong>
+                  <span class="text-muted">(@{{ u.username }})</span>
+                </div>
+                <span class="badge text-bg-dark">{{ role_configs.get(u.role, {'label': u.role}).label }}</span>
+              </div>
+              <div class="small text-muted">
+                Zugriff Presse:
+                {% if 'presse_access' in role_configs.get(u.role, {'permissions': []}).permissions %}Ja{% else %}Nein{% endif %}
+              </div>
+
+                {% if can_manage_users and username != u.username %}
+              <form method="post" action="/presse/user/{{ u.username }}/role" class="row g-2 mt-1">
+                <div class="col-sm-8">
+                  <select name="new_role" class="form-select form-select-sm" required>
+                    {% for role_key, cfg in role_configs.items() %}
+                      {% if role == 'owner' or role_key != 'owner' %}
+                      <option value="{{ role_key }}" {% if u.role == role_key %}selected{% endif %}>{{ cfg.label }} ({{ role_key }})</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-sm-4 d-grid">
+                  <button type="submit" class="btn btn-outline-primary btn-sm">Upranken</button>
+                </div>
+              </form>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted m-0">Keine Mitarbeiter gefunden.</p>
+        {% endif %}
+      </section>
+    </main>
+  </body>
+</html>

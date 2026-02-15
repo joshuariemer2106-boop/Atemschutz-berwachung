@@ -132,7 +132,7 @@
             <div style="opacity:.9;font-size:14px">Entwurf, Freigabe und Versand in den Presse-Kanal</div>
           </div>
           <div class="d-flex gap-2">
-            <span class="role-pill">{{ name }} ({{ role }})</span>
+            <span class="role-pill">{{ name }} ({{ role_label }})</span>
             <a href="/menu" class="btn btn-light btn-sm">Hauptmenue</a>
             <form method="post" action="/presse/logout">
               <button type="submit" class="btn btn-dark btn-sm">Abmelden</button>
@@ -256,14 +256,11 @@
               <div class="mb-2">
                 <label class="form-label">Rolle</label>
                 <select name="role" class="form-select" required>
-                  <option value="asw">Atemschutz (asw)</option>
-                  <option value="mitglied">Mitglied</option>
-                  {% if role == 'owner' %}
-                  <option value="leitung">Leitung</option>
-                  {% endif %}
-                  {% if role == 'owner' %}
-                  <option value="owner">Owner</option>
-                  {% endif %}
+                  {% for role_key, cfg in role_configs.items() %}
+                    {% if role == 'owner' or role_key != 'owner' %}
+                    <option value="{{ role_key }}">{{ cfg.label }} ({{ role_key }})</option>
+                    {% endif %}
+                  {% endfor %}
                 </select>
               </div>
               <div class="mb-2">
@@ -280,7 +277,7 @@
             {% for u in users %}
               <div class="d-flex justify-content-between align-items-center small mb-1">
                 <span><strong>{{ u.username }}</strong> ({{ u.display_name }})</span>
-                <span class="badge text-bg-secondary">{{ u.role }}</span>
+                <span class="badge text-bg-secondary">{{ role_configs.get(u.role, {'label': u.role}).label }}</span>
               </div>
             {% endfor %}
           </div>
@@ -298,22 +295,21 @@
                     <strong>{{ u.display_name }}</strong>
                     <span class="text-muted">(@{{ u.username }})</span>
                   </div>
-                  <span class="badge text-bg-dark">{{ u.role }}</span>
+                  <span class="badge text-bg-dark">{{ role_configs.get(u.role, {'label': u.role}).label }}</span>
                 </div>
                 <div class="small text-muted">
                   Zugriff Presse:
-                  {% if u.role in ['owner', 'leitung', 'mitglied'] %}Ja{% else %}Nein{% endif %}
+                  {% if 'presse_access' in role_configs.get(u.role, {'permissions': []}).permissions %}Ja{% else %}Nein{% endif %}
                 </div>
                 {% if can_manage_users and username != u.username %}
                 <form method="post" action="/presse/user/{{ u.username }}/role" class="row g-2 mt-1">
                   <div class="col-8">
                     <select name="new_role" class="form-select form-select-sm" required>
-                      <option value="asw" {% if u.role == 'asw' %}selected{% endif %}>Atemschutz (asw)</option>
-                      <option value="mitglied" {% if u.role == 'mitglied' %}selected{% endif %}>Mitglied</option>
-                      {% if role == 'owner' %}
-                      <option value="leitung" {% if u.role == 'leitung' %}selected{% endif %}>Leitung</option>
-                      <option value="owner" {% if u.role == 'owner' %}selected{% endif %}>Owner</option>
-                      {% endif %}
+                      {% for role_key, cfg in role_configs.items() %}
+                        {% if role == 'owner' or role_key != 'owner' %}
+                        <option value="{{ role_key }}" {% if u.role == role_key %}selected{% endif %}>{{ cfg.label }} ({{ role_key }})</option>
+                        {% endif %}
+                      {% endfor %}
                     </select>
                   </div>
                   <div class="col-4 d-grid">
@@ -334,12 +330,12 @@
               {% for article in pending_articles %}
                 <div class="article">
                   <div><strong>{{ article.title }}</strong></div>
-                  <div class="muted">Von {{ article.author_name }} ({{ article.author_role }}) · {{ article.created_at }}</div>
+                  <div class="muted">Von {{ article.author_name }} ({{ role_configs.get(article.author_role, {'label': article.author_role}).label }}) · {{ article.created_at }}</div>
                   {% if article.image_filename %}
                   <div class="mt-2"><img src="/uploads/{{ article.image_filename }}" alt="Einsatzbild" class="img-fluid rounded border"></div>
                   {% endif %}
                   <pre>{{ article.body }}</pre>
-                  {% if role == 'leitung' or role == 'owner' %}
+                  {% if can_approve_articles %}
                   <form method="post" action="/presse/artikel/{{ article.id }}/freigeben">
                     <button type="submit" class="btn btn-success btn-sm mt-2">Freigeben und senden</button>
                   </form>

@@ -29,6 +29,33 @@ PRESS_USERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_users.json")
 PRESS_SETTINGS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_settings.json")
 PRESS_SERVERS_FILE = os.path.join(PRESS_STORAGE_DIR, "press_servers.json")
 
+PERMISSIONS_CATALOG = [
+    ("atemschutz_access", "Zugriff auf Atemschutz"),
+    ("presse_access", "Zugriff auf Presse-Bereich"),
+    ("staff_list_access", "Zugriff auf Mitarbeiterliste"),
+    ("create_users", "Mitarbeiter erstellen"),
+    ("approve_articles", "Artikel freigeben"),
+]
+
+DEFAULT_ROLE_CONFIGS = {
+    "owner": {
+        "label": "Owner",
+        "permissions": [perm for perm, _ in PERMISSIONS_CATALOG],
+    },
+    "leitung": {
+        "label": "Leitung",
+        "permissions": ["atemschutz_access", "presse_access", "staff_list_access", "create_users", "approve_articles"],
+    },
+    "mitglied": {
+        "label": "Presse Mitglied",
+        "permissions": ["atemschutz_access", "presse_access", "staff_list_access"],
+    },
+    "asw": {
+        "label": "Atemschutz",
+        "permissions": ["atemschutz_access"],
+    },
+}
+
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.secret_key = os.getenv("FLASK_SECRET", "dev-secret")
@@ -285,8 +312,52 @@ def get_safe_next(default_path):
     return default_path
 
 
+def get_role_configs(server_id):
+    configs = {
+        key: {"label": value.get("label", key), "permissions": list(value.get("permissions", []))}
+        for key, value in DEFAULT_ROLE_CONFIGS.items()
+    }
+    settings = load_press_settings_for(server_id)
+    raw = settings.get("role_configs", {})
+    if isinstance(raw, dict):
+        for role_key, role_cfg in raw.items():
+            if not isinstance(role_cfg, dict):
+                continue
+            key = (role_key or "").strip().lower()
+            if not key:
+                continue
+            label = (role_cfg.get("label", key) or key).strip()
+            permissions = role_cfg.get("permissions", [])
+            if not isinstance(permissions, list):
+                permissions = []
+            valid_permissions = [p for p in permissions if any(p == code for code, _ in PERMISSIONS_CATALOG)]
+            configs[key] = {"label": label, "permissions": valid_permissions}
+    # Owner remains full-access by design.
+    configs["owner"] = {
+        "label": configs.get("owner", {}).get("label", "Owner"),
+        "permissions": [perm for perm, _ in PERMISSIONS_CATALOG],
+    }
+    return configs
+
+
+def save_role_configs_for(server_id, role_configs):
+    settings = load_press_settings_for(server_id)
+    settings["role_configs"] = role_configs
+    save_press_settings_for(server_id, settings)
+
+
+def has_permission(permission_code, role=None, server_id=None):
+    role = (role or get_press_role() or "").strip().lower()
+    server_id = server_id or current_server_id()
+    if not role:
+        return False
+    role_configs = get_role_configs(server_id)
+    cfg = role_configs.get(role, {})
+    return permission_code in cfg.get("permissions", [])
+
+
 def has_press_access():
-    return get_press_role() in {"owner", "leitung", "mitglied"}
+    return has_permission("presse_access")
 
 
 def count_server_owners(users, server_id):
@@ -308,17 +379,53 @@ def start():
 def menu():
     if not is_press_logged_in():
         return redirect(url_for("start"))
+    server_id = current_server_id()
+    role = get_press_role()
+    role_configs = get_role_configs(server_id)
     return render_template(
         "menu.html",
-        role=get_press_role(),
+        role=role,
+        role_label=role_configs.get(role, {}).get("label", role),
         server_name=session.get("server_name", ""),
         server_code=session.get("server_code", ""),
+        can_access_press=has_permission("presse_access", role=role, server_id=server_id),
+        can_access_staff_list=has_permission("staff_list_access", role=role, server_id=server_id),
+        can_access_owner_settings=(role == "owner"),
+    )
+
+
+@app.route("/mitarbeiter", methods=["GET"])
+def mitarbeiterliste():
+    if not is_press_logged_in():
+        return redirect("/presse")
+    if not has_permission("staff_list_access"):
+        flash("Kein Zugriff auf Mitarbeiterliste.", "danger")
+        return redirect("/menu")
+
+    server_id = current_server_id()
+    role = get_press_role()
+    users = [u for u in load_press_users() if u.get("server_id") == server_id]
+    users.sort(key=lambda u: (u.get("display_name", "").lower(), u.get("username", "").lower()))
+    role_configs = get_role_configs(server_id)
+    return render_template(
+        "mitarbeiterliste.html",
+        role=role,
+        role_label=role_configs.get(role, {}).get("label", role),
+        username=session.get("presse_username", ""),
+        users=users,
+        can_manage_users=has_permission("create_users", role=role, server_id=server_id),
+        role_configs=role_configs,
     )
 
 # Compatibility route for direct template URL usage (e.g. Live Server style links)
 @app.route("/templates/menu.html", methods=["GET"])
 def menu_template_alias():
     return redirect("/menu")
+
+
+@app.route("/templates/mitarbeiterliste.html", methods=["GET"])
+def mitarbeiterliste_template_alias():
+    return redirect("/mitarbeiter")
 
 
 @app.route("/uploads/<path:filename>", methods=["GET"])
@@ -380,6 +487,9 @@ def join():
 def atemschutz():
     if not is_press_logged_in():
         return redirect(url_for("presse_login", next="/atemschutz"))
+    if not has_permission("atemschutz_access"):
+        flash("Kein Zugriff auf Atemschutz.", "danger")
+        return redirect("/menu")
 
     if request.method == "POST":
         # check if it's a screenshot upload
@@ -704,6 +814,7 @@ def presse_bereich():
         return redirect("/menu")
     role = get_press_role()
     server_id = current_server_id()
+    role_configs = get_role_configs(server_id)
     articles = load_press_articles()
     server_articles = [a for a in articles if a.get("server_id") == server_id]
     pending_articles = [a for a in server_articles if a.get("status") == "pending"]
@@ -716,12 +827,15 @@ def presse_bereich():
     return render_template(
         "presse_bereich.html",
         role=role,
+        role_label=role_configs.get(role, {}).get("label", role),
         name=session.get("presse_name", "Unbekannt"),
         username=session.get("presse_username", ""),
         pending_articles=pending_articles,
         approved_articles=approved_articles,
         users=server_users,
-        can_manage_users=(role in {"owner", "leitung"}),
+        can_manage_users=has_permission("create_users", role=role, server_id=server_id),
+        can_approve_articles=has_permission("approve_articles", role=role, server_id=server_id),
+        role_configs=role_configs,
         press_settings=load_press_settings_for(server_id),
     )
 
@@ -730,23 +844,26 @@ def presse_bereich():
 def presse_user_create():
     if not is_press_logged_in():
         return redirect("/presse")
-    if not has_press_access():
+    if not has_permission("staff_list_access"):
         flash("Kein Zugriff auf Nutzerverwaltung.", "danger")
         return redirect("/menu")
     actor_role = get_press_role()
-    if actor_role not in {"owner", "leitung"}:
-        flash("Nur Owner/Leitung darf Accounts erstellen.", "danger")
+    server_id = current_server_id()
+    if not has_permission("create_users", role=actor_role, server_id=server_id):
+        flash("Du darfst keine Accounts erstellen.", "danger")
         return redirect("/presse/bereich")
 
     users = load_press_users()
-    server_id = current_server_id()
+    role_configs = get_role_configs(server_id)
     username = request.form.get("username", "").strip().lower()
     display_name = request.form.get("display_name", "").strip()
     role = request.form.get("role", "").strip().lower()
     password = request.form.get("password", "")
     password_confirm = request.form.get("password_confirm", "")
 
-    allowed_roles = {"asw", "mitglied", "leitung", "owner"} if actor_role == "owner" else {"asw", "mitglied"}
+    allowed_roles = set(role_configs.keys())
+    if actor_role != "owner":
+        allowed_roles.discard("owner")
     if role not in allowed_roles:
         flash("Ungültige Rolle.", "danger")
         return redirect("/presse/bereich")
@@ -780,17 +897,18 @@ def presse_user_create():
 def presse_user_update_role(username):
     if not is_press_logged_in():
         return redirect("/presse")
-    if not has_press_access():
+    if not has_permission("staff_list_access"):
         flash("Kein Zugriff auf Nutzerverwaltung.", "danger")
         return redirect("/menu")
 
     actor_role = get_press_role()
-    if actor_role not in {"owner", "leitung"}:
-        flash("Nur Owner/Leitung darf Rollen ändern.", "danger")
+    server_id = current_server_id()
+    if not has_permission("create_users", role=actor_role, server_id=server_id):
+        flash("Du darfst Rollen nicht ändern.", "danger")
         return redirect("/presse/bereich")
 
-    server_id = current_server_id()
     users = load_press_users()
+    role_configs = get_role_configs(server_id)
     target = next(
         (
             u
@@ -810,7 +928,9 @@ def presse_user_update_role(username):
         return redirect("/presse/bereich")
 
     new_role = request.form.get("new_role", "").strip().lower()
-    allowed_target_roles = {"asw", "mitglied", "leitung", "owner"} if actor_role == "owner" else {"asw", "mitglied"}
+    allowed_target_roles = set(role_configs.keys())
+    if actor_role != "owner":
+        allowed_target_roles.discard("owner")
     if new_role not in allowed_target_roles:
         flash("Ungültige Zielrolle.", "danger")
         return redirect("/presse/bereich")
@@ -841,7 +961,31 @@ def owner_settings():
         return redirect("/menu")
 
     server_id = current_server_id()
+    role_configs = get_role_configs(server_id)
     if request.method == "POST":
+        action = request.form.get("action", "save_webhooks").strip().lower()
+
+        if action == "save_role":
+            role_key = re.sub(r"[^a-z0-9_-]", "", request.form.get("role_key", "").strip().lower())
+            role_label = request.form.get("role_label", "").strip()
+            selected_permissions = request.form.getlist("permissions")
+            valid_permission_codes = {code for code, _ in PERMISSIONS_CATALOG}
+            permissions = [p for p in selected_permissions if p in valid_permission_codes]
+
+            if not role_key:
+                flash("Rollen-ID ist erforderlich (z.B. presse_mitglied).", "danger")
+                return redirect("/owner/settings")
+            if role_key == "owner":
+                flash("Owner-Rolle kann nicht geändert werden.", "danger")
+                return redirect("/owner/settings")
+            if not role_label:
+                role_label = role_key
+
+            role_configs[role_key] = {"label": role_label, "permissions": permissions}
+            save_role_configs_for(server_id, role_configs)
+            flash(f"Rolle '{role_label}' gespeichert.", "success")
+            return redirect("/owner/settings")
+
         asw_webhook_url_1 = request.form.get("asw_webhook_url_1", "").strip()
         asw_webhook_url_2 = request.form.get("asw_webhook_url_2", "").strip()
         webhook_url_1 = request.form.get("webhook_url_1", "").strip()
@@ -862,6 +1006,7 @@ def owner_settings():
                 "asw_webhook_url_2": asw_webhook_url_2,
                 "webhook_url_1": webhook_url_1,
                 "webhook_url_2": webhook_url_2,
+                "role_configs": role_configs,
                 "updated_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
                 "updated_by": session.get("presse_username", ""),
             }
@@ -879,7 +1024,12 @@ def owner_settings():
     if not settings.get("webhook_url_2"):
         settings["webhook_url_2"] = os.getenv("DISCORD_PRESS_WEBHOOK_URL_2", "")
 
-    return render_template("owner_settings.html", settings=settings)
+    return render_template(
+        "owner_settings.html",
+        settings=settings,
+        role_configs=role_configs,
+        permissions_catalog=PERMISSIONS_CATALOG,
+    )
 
 
 @app.route("/presse/artikel", methods=["POST"])
@@ -937,8 +1087,8 @@ def presse_artikel_freigeben(article_id):
     if not has_press_access():
         flash("Kein Zugriff auf Presse-Freigabe.", "danger")
         return redirect("/menu")
-    if get_press_role() not in {"leitung", "owner"}:
-        flash("Nur Leitung/Owner darf Artikel freigeben.", "danger")
+    if not has_permission("approve_articles"):
+        flash("Deine Rolle darf Artikel nicht freigeben.", "danger")
         return redirect("/presse/bereich")
 
     server_id = current_server_id()

@@ -23,7 +23,8 @@
         {% endif %}
       {% endwith %}
 
-      <form method="post" action="/owner/settings">
+      <form method="post" action="/owner/settings" class="mb-4">
+        <input type="hidden" name="action" value="save_webhooks">
         <h2 class="h5 mt-2">Atemschutz Webhooks</h2>
         <div class="mb-2">
           <label class="form-label">Atemschutz Webhook URL 1 (Pflicht)</label>
@@ -46,6 +47,68 @@
 
         <button class="btn btn-dark" type="submit">Speichern</button>
         <a href="/menu" class="btn btn-outline-secondary">Zurück</a>
+      </form>
+
+      <hr>
+      <h2 class="h5">Rollen und Zugriffe</h2>
+      <p class="text-muted mb-2">Owner kann Rollen anlegen und festlegen, wer worauf zugreifen darf.</p>
+
+      {% for role_key, cfg in role_configs.items() %}
+        {% if role_key != 'owner' %}
+        <form method="post" action="/owner/settings" class="border rounded p-3 mb-2 bg-white">
+          <input type="hidden" name="action" value="save_role">
+          <input type="hidden" name="role_key" value="{{ role_key }}">
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label">Rollen-ID</label>
+              <input class="form-control" value="{{ role_key }}" disabled>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Anzeigename</label>
+              <input name="role_label" class="form-control" value="{{ cfg.label }}" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Rechte</label>
+              <div class="d-flex flex-wrap gap-3">
+                {% for perm_code, perm_label in permissions_catalog %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="{{ role_key }}_{{ perm_code }}" name="permissions" value="{{ perm_code }}" {% if perm_code in cfg.permissions %}checked{% endif %}>
+                  <label class="form-check-label" for="{{ role_key }}_{{ perm_code }}">{{ perm_label }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-outline-dark btn-sm mt-2" type="submit">Rolle speichern</button>
+        </form>
+        {% endif %}
+      {% endfor %}
+
+      <form method="post" action="/owner/settings" class="border rounded p-3 bg-white">
+        <input type="hidden" name="action" value="save_role">
+        <h3 class="h6">Neue Rolle anlegen</h3>
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label">Rollen-ID</label>
+            <input name="role_key" class="form-control" placeholder="z.B. presse_mitglied" required>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">Anzeigename</label>
+            <input name="role_label" class="form-control" placeholder="z.B. Presse Mitglied" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Rechte</label>
+            <div class="d-flex flex-wrap gap-3">
+              {% for perm_code, perm_label in permissions_catalog %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="new_{{ perm_code }}" name="permissions" value="{{ perm_code }}">
+                <label class="form-check-label" for="new_{{ perm_code }}">{{ perm_label }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-dark btn-sm mt-2" type="submit">Neue Rolle speichern</button>
       </form>
     </main>
   </body>
