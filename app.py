@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 import time
 from contextlib import contextmanager
 import uuid
+import unicodedata
 
 load_dotenv()
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
@@ -162,10 +163,12 @@ def save_press_servers(servers):
 
 
 def normalize_server_code(server_code):
-    code = (server_code or "").strip().lower()
+    code = unicodedata.normalize("NFKC", (server_code or "")).strip().lower()
     if code.startswith("#"):
         code = code[1:]
-    return "".join(code.split())
+    code = "".join(code.split())
+    # Make matching robust against copied separators and hidden punctuation.
+    return re.sub(r"[^a-z0-9]", "", code)
 
 
 def find_server_by_code(servers, server_code):
@@ -677,7 +680,7 @@ def presse_login():
     servers = load_press_servers()
     if request.method == "POST":
         server_code = normalize_server_code(request.form.get("server_code", ""))
-        username = request.form.get("username", "").strip().lower()
+        identifier = (request.form.get("identifier", "") or request.form.get("username", "")).strip().lower()
         password = request.form.get("password", "")
         server = find_server_by_code(servers, server_code)
 
@@ -690,8 +693,8 @@ def presse_login():
                     for u in users
                     if u.get("server_id") == server.get("id")
                     and (
-                        (u.get("username", "").strip().lower() == username)
-                        or (u.get("display_name", "").strip().lower() == username)
+                        (u.get("username", "").strip().lower() == identifier)
+                        or (u.get("display_name", "").strip().lower() == identifier)
                     )
                 ),
                 None,
@@ -704,8 +707,8 @@ def presse_login():
                 u
                 for u in users
                 if (
-                    (u.get("username", "").strip().lower() == username)
-                    or (u.get("display_name", "").strip().lower() == username)
+                    (u.get("username", "").strip().lower() == identifier)
+                    or (u.get("display_name", "").strip().lower() == identifier)
                 )
                 and check_password_hash(u.get("password_hash", ""), password)
             ]
