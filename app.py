@@ -232,6 +232,14 @@ def current_server_id():
     return session.get("server_id", "")
 
 
+def format_identity_label(username, display_name):
+    dn = (username or "").strip().upper()
+    full_name = (display_name or "").strip()
+    if dn and full_name:
+        return f"{dn} {full_name}"
+    return full_name or dn or "Unbekannt"
+
+
 def sync_current_session_user():
     if not is_press_logged_in():
         return
@@ -264,7 +272,7 @@ def sync_current_session_user():
         return
 
     new_role = (user.get("role", "") or "").strip().lower()
-    new_name = (user.get("display_name", "") or user.get("username", "Unbekannt")).strip()
+    new_name = format_identity_label(user.get("username", ""), user.get("display_name", ""))
     if session.get("presse_role", "") != new_role:
         session["presse_role"] = new_role
     if session.get("presse_name", "") != new_name:
@@ -653,7 +661,7 @@ def join():
 
         session["presse_auth"] = True
         session["presse_role"] = "asw"
-        session["presse_name"] = display_name
+        session["presse_name"] = format_identity_label(username, display_name)
         session["presse_username"] = username
         session["server_id"] = server.get("id")
         session["server_code"] = server.get("server_code")
@@ -889,7 +897,7 @@ def presse_login():
             session.permanent = True
             session["presse_auth"] = True
             session["presse_role"] = user.get("role", "mitglied")
-            session["presse_name"] = user.get("display_name", user.get("username", "Unbekannt"))
+            session["presse_name"] = format_identity_label(user.get("username", ""), user.get("display_name", ""))
             session["presse_username"] = user.get("username", "")
             session["server_id"] = user.get("server_id", "")
             session["server_code"] = server.get("server_code", "") if server else ""
@@ -1154,7 +1162,7 @@ def presse_user_update_identity(username):
     actor_username = (session.get("presse_username", "") or "").strip().lower()
     if actor_username == (old_username or "").strip().lower():
         session["presse_username"] = new_username
-        session["presse_name"] = new_display_name
+        session["presse_name"] = format_identity_label(new_username, new_display_name)
 
     flash("Mitarbeiterdaten aktualisiert.", "success")
     return redirect("/mitarbeiter")
