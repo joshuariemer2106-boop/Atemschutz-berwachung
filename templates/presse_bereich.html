@@ -128,8 +128,8 @@
       <section class="hero">
         <div class="hero-top">
           <div>
-            <h1 class="h3 m-0">Kommunikationsmodul</h1>
-            <div style="opacity:.9;font-size:14px">Entwurf, Freigabe und Versand von Einsatzinformationen</div>
+            <h1 class="h3 m-0">Presse</h1>
+            <div style="opacity:.9;font-size:14px">Entwurf, Freigabe und Versand von Presseinformationen</div>
           </div>
           <div class="d-flex gap-2">
             <span class="role-pill">{{ name }} ({{ role_label }})</span>
@@ -238,89 +238,6 @@
         </div>
 
         <div>
-          {% if can_manage_users %}
-          <div class="card mb-3">
-            <div class="split-head">
-              <h2 class="h6 m-0">Account erstellen</h2>
-              <span class="badge text-bg-dark">{{ users|length }} Nutzer</span>
-            </div>
-            <form method="post" action="/presse/user/create">
-              <div class="mb-2">
-                <label class="form-label">Benutzername</label>
-                <input name="username" class="form-control" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Anzeigename</label>
-                <input name="display_name" class="form-control" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Rolle</label>
-                <select name="role" class="form-select" required>
-                  {% for role_key, cfg in role_configs.items() %}
-                    {% if role == 'owner' or role_key != 'owner' %}
-                    <option value="{{ role_key }}">{{ cfg.label }} ({{ role_key }})</option>
-                    {% endif %}
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Passwort</label>
-                <input type="password" name="password" class="form-control" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Passwort wiederholen</label>
-                <input type="password" name="password_confirm" class="form-control" required>
-              </div>
-              <button type="submit" class="btn btn-dark btn-sm">Account anlegen</button>
-            </form>
-            <hr>
-            {% for u in users %}
-              <div class="d-flex justify-content-between align-items-center small mb-1">
-                <span><strong>{{ u.username }}</strong> ({{ u.display_name }})</span>
-                <span class="badge text-bg-secondary">{{ role_configs.get(u.role, {'label': u.role}).label }}</span>
-              </div>
-            {% endfor %}
-          </div>
-          {% endif %}
-
-          <div class="card mb-3">
-            <div class="split-head">
-              <h2 class="h6 m-0">Mitarbeiterliste</h2>
-              <span class="badge text-bg-secondary">{{ users|length }}</span>
-            </div>
-            {% for u in users %}
-              <div class="border rounded p-2 mb-2 bg-light-subtle">
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
-                    <strong>{{ u.display_name }}</strong>
-                    <span class="text-muted">(@{{ u.username }})</span>
-                  </div>
-                  <span class="badge text-bg-dark">{{ role_configs.get(u.role, {'label': u.role}).label }}</span>
-                </div>
-                <div class="small text-muted">
-                  Zugriff Presse:
-                  {% if 'presse_access' in role_configs.get(u.role, {'permissions': []}).permissions %}Ja{% else %}Nein{% endif %}
-                </div>
-                {% if can_manage_users and username != u.username %}
-                <form method="post" action="/presse/user/{{ u.username }}/role" class="row g-2 mt-1">
-                  <div class="col-8">
-                    <select name="new_role" class="form-select form-select-sm" required>
-                      {% for role_key, cfg in role_configs.items() %}
-                        {% if role == 'owner' or role_key != 'owner' %}
-                        <option value="{{ role_key }}" {% if u.role == role_key %}selected{% endif %}>{{ cfg.label }} ({{ role_key }})</option>
-                        {% endif %}
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="col-4 d-grid">
-                    <button type="submit" class="btn btn-outline-primary btn-sm">Upranken</button>
-                  </div>
-                </form>
-                {% endif %}
-              </div>
-            {% endfor %}
-          </div>
-
           <div class="card mb-3">
             <div class="split-head">
               <h2 class="h6 m-0">Offene Artikel</h2>

@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import re
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import time
 from contextlib import contextmanager
 import uuid
@@ -60,6 +60,7 @@ DEFAULT_ROLE_CONFIGS = {
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.secret_key = os.getenv("FLASK_SECRET", "dev-secret")
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=3650)
 
 
 def allowed_file(filename):
@@ -140,6 +141,50 @@ def get_press_role():
 
 def current_server_id():
     return session.get("server_id", "")
+
+
+def sync_current_session_user():
+    if not is_press_logged_in():
+        return
+    server_id = (session.get("server_id", "") or "").strip()
+    username = (session.get("presse_username", "") or "").strip().lower()
+    if not server_id or not username:
+        return
+
+    users = load_press_users()
+    user = next(
+        (
+            u
+            for u in users
+            if u.get("server_id") == server_id and u.get("username", "").strip().lower() == username
+        ),
+        None,
+    )
+    if not user:
+        if session.get("server_id"):
+            session["last_server_id"] = session.get("server_id", "")
+            session["last_server_code"] = session.get("server_code", "")
+            session["last_server_name"] = session.get("server_name", "")
+        session.pop("presse_auth", None)
+        session.pop("presse_role", None)
+        session.pop("presse_name", None)
+        session.pop("presse_username", None)
+        session.pop("server_id", None)
+        session.pop("server_code", None)
+        session.pop("server_name", None)
+        return
+
+    new_role = (user.get("role", "") or "").strip().lower()
+    new_name = (user.get("display_name", "") or user.get("username", "Unbekannt")).strip()
+    if session.get("presse_role", "") != new_role:
+        session["presse_role"] = new_role
+    if session.get("presse_name", "") != new_name:
+        session["presse_name"] = new_name
+
+
+@app.before_request
+def refresh_session_user():
+    sync_current_session_user()
 
 
 def load_press_servers():
@@ -720,6 +765,7 @@ def presse_login():
                 return redirect("/presse")
 
         if user and check_password_hash(user.get("password_hash", ""), password):
+            session.permanent = True
             session["presse_auth"] = True
             session["presse_role"] = user.get("role", "mitglied")
             session["presse_name"] = user.get("display_name", user.get("username", "Unbekannt"))
@@ -727,6 +773,9 @@ def presse_login():
             session["server_id"] = user.get("server_id", "")
             session["server_code"] = server.get("server_code", "") if server else ""
             session["server_name"] = server.get("name", "") if server else ""
+            session["last_server_id"] = session.get("server_id", "")
+            session["last_server_code"] = session.get("server_code", "")
+            session["last_server_name"] = session.get("server_name", "")
             default_target = "/atemschutz" if session["presse_role"] == "asw" else "/menu"
             return redirect(get_safe_next(default_target))
 
@@ -750,6 +799,7 @@ def presse_login():
         error=request.args.get("error") == "1",
         owner_exists=owner_exists(users),
         next_path=get_safe_next(""),
+        remembered_server_code=session.get("last_server_code", ""),
     )
 
 
@@ -1171,6 +1221,11 @@ def presse_artikel_freigeben(article_id):
 
 @app.route("/presse/logout", methods=["GET", "POST"])
 def presse_logout():
+    session.permanent = True
+    if session.get("server_id"):
+        session["last_server_id"] = session.get("server_id", "")
+        session["last_server_code"] = session.get("server_code", "")
+        session["last_server_name"] = session.get("server_name", "")
     session.pop("presse_auth", None)
     session.pop("presse_role", None)
     session.pop("presse_name", None)
