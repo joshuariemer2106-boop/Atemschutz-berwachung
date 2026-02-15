@@ -161,9 +161,16 @@ def save_press_servers(servers):
         os.replace(tmp_path, PRESS_SERVERS_FILE)
 
 
-def find_server_by_code(servers, server_code):
+def normalize_server_code(server_code):
     code = (server_code or "").strip().lower()
-    return next((s for s in servers if (s.get("server_code", "").strip().lower() == code)), None)
+    if code.startswith("#"):
+        code = code[1:]
+    return "".join(code.split())
+
+
+def find_server_by_code(servers, server_code):
+    code = normalize_server_code(server_code)
+    return next((s for s in servers if normalize_server_code(s.get("server_code", "")) == code), None)
 
 
 def find_server_by_id(servers, server_id):
@@ -439,9 +446,12 @@ def uploaded_file(filename):
 def join():
     ensure_storage_migrated()
     if request.method == "POST":
-        server_code = request.form.get("server_code", "").strip().lower()
-        username = request.form.get("username", "").strip().lower()
-        display_name = request.form.get("display_name", "").strip()
+        server_code = normalize_server_code(request.form.get("server_code", ""))
+        dienstnummer = request.form.get("dienstnummer", "").strip()
+        full_name = request.form.get("full_name", "").strip()
+        # Backward-compatible: old forms may still submit username/display_name.
+        username = (dienstnummer or request.form.get("username", "")).strip().lower()
+        display_name = (full_name or request.form.get("display_name", "")).strip()
         password = request.form.get("password", "")
         password_confirm = request.form.get("password_confirm", "")
 
@@ -458,7 +468,7 @@ def join():
             flash("Passwörter stimmen nicht überein.", "danger")
             return redirect("/join")
         if next((u for u in users if u.get("server_id") == server.get("id") and u.get("username", "").strip().lower() == username), None):
-            flash("Benutzername bereits vergeben.", "danger")
+            flash("Dienstnummer bereits vergeben.", "danger")
             return redirect("/join")
 
         users.append(
@@ -666,7 +676,7 @@ def presse_login():
     users = load_press_users()
     servers = load_press_servers()
     if request.method == "POST":
-        server_code = request.form.get("server_code", "").strip().lower()
+        server_code = normalize_server_code(request.form.get("server_code", ""))
         username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
         server = find_server_by_code(servers, server_code)
@@ -748,16 +758,24 @@ def presse_owner_setup():
 
     if request.method == "POST":
         server_name = request.form.get("server_name", "").strip()
-        server_code = request.form.get("server_code", "").strip().lower()
+        server_code = normalize_server_code(request.form.get("server_code", ""))
         username = request.form.get("username", "").strip().lower()
         display_name = request.form.get("display_name", "").strip()
         password = request.form.get("password", "")
         password_confirm = request.form.get("password_confirm", "")
         webhook_url_1 = request.form.get("webhook_url_1", "").strip()
-        webhook_url_2 = request.form.get("webhook_url_2", "").strip()
+        asw_webhook_url_1 = request.form.get("asw_webhook_url_1", "").strip()
 
-        if not server_name or not server_code or not username or not display_name or not password or not webhook_url_1:
-            flash("Alle Pflichtfelder inklusive Webhook sind erforderlich.", "danger")
+        if (
+            not server_name
+            or not server_code
+            or not username
+            or not display_name
+            or not password
+            or not webhook_url_1
+            or not asw_webhook_url_1
+        ):
+            flash("Alle Pflichtfelder inklusive Presse- und Atemschutz-Webhook sind erforderlich.", "danger")
             return redirect("/presse/owner/setup")
         if password != password_confirm:
             flash("Passwörter stimmen nicht überein.", "danger")
@@ -796,8 +814,10 @@ def presse_owner_setup():
             server_id,
             {
                 "server_id": server_id,
+                "asw_webhook_url_1": asw_webhook_url_1,
+                "asw_webhook_url_2": "",
                 "webhook_url_1": webhook_url_1,
-                "webhook_url_2": webhook_url_2,
+                "webhook_url_2": "",
                 "updated_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
                 "updated_by": username,
             }
