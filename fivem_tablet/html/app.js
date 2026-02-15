@@ -3,9 +3,11 @@ const frame = document.getElementById("appFrame");
 const closeBtn = document.getElementById("closeBtn");
 
 function postClose() {
-  fetch(`https://${GetParentResourceName()}/close`, {
+  const resourceName =
+    typeof GetParentResourceName === "function" ? GetParentResourceName() : "fivem_tablet";
+  return fetch(`https://${resourceName}/close`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json; charset=UTF-8" },
     body: JSON.stringify({})
   }).catch(() => {});
 }
@@ -24,7 +26,15 @@ window.addEventListener("message", (event) => {
   }
 });
 
-closeBtn.addEventListener("click", postClose);
+closeBtn.addEventListener("click", () => {
+  postClose();
+});
+closeBtn.addEventListener("mousedown", () => {
+  postClose();
+});
+closeBtn.addEventListener("touchstart", () => {
+  postClose();
+});
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {

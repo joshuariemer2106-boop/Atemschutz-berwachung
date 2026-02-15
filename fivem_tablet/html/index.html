@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tablet</title>
     <style>
+      :root {
+        --tablet-max-width: 1320px;
+        --tablet-min-width: 760px;
+        --tablet-max-height: 900px;
+        --tablet-radius: 18px;
+      }
+
       html, body {
         margin: 0;
         width: 100%;
@@ -14,43 +21,48 @@
         background: transparent;
       }
 
-      .hidden {
-        display: none;
-      }
-
       .overlay {
         position: fixed;
         inset: 0;
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: clamp(8px, 1.8vw, 24px);
         background: rgba(0, 0, 0, 0.45);
       }
 
+      .overlay.hidden {
+        display: none;
+        pointer-events: none;
+      }
+
       .tablet {
-        width: min(1100px, 92vw);
-        height: min(760px, 92vh);
-        border-radius: 18px;
+        width: min(var(--tablet-max-width), calc(100vw - clamp(16px, 3vw, 48px)));
+        max-width: max(var(--tablet-min-width), 60vw);
+        aspect-ratio: 16 / 10;
+        max-height: min(var(--tablet-max-height), calc(100vh - clamp(16px, 3vw, 48px)));
+        height: auto;
+        border-radius: var(--tablet-radius);
         background: #101520;
         box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
         border: 1px solid rgba(255, 255, 255, 0.12);
         overflow: hidden;
         display: grid;
-        grid-template-rows: 44px 1fr;
+        grid-template-rows: clamp(40px, 3.8vw, 48px) 1fr;
       }
 
       .bar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 0 10px;
+        padding: 0 clamp(8px, 1.3vw, 14px);
         color: #d9e2f2;
         background: linear-gradient(180deg, #1a2538, #121b2b);
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
       }
 
       .title {
-        font-size: 13px;
+        font-size: clamp(12px, 1.2vw, 15px);
         font-weight: 700;
         letter-spacing: 0.3px;
       }
@@ -58,9 +70,9 @@
       .close-btn {
         border: 0;
         border-radius: 8px;
-        padding: 6px 10px;
+        padding: clamp(6px, 0.9vw, 8px) clamp(10px, 1.2vw, 12px);
         color: #fff;
-        font-size: 12px;
+        font-size: clamp(11px, 1vw, 13px);
         font-weight: 700;
         background: #b92828;
         cursor: pointer;
@@ -71,6 +83,29 @@
         height: 100%;
         border: 0;
         background: #fff;
+      }
+
+      @media (max-width: 980px) {
+        .tablet {
+          width: calc(100vw - 12px);
+          max-width: none;
+          max-height: calc(100vh - 12px);
+          border-radius: 12px;
+        }
+      }
+
+      @media (max-width: 760px), (max-height: 520px) {
+        .overlay {
+          padding: 0;
+        }
+        .tablet {
+          width: 100vw;
+          height: 100vh;
+          max-height: 100vh;
+          aspect-ratio: auto;
+          border-radius: 0;
+          border: 0;
+        }
       }
     </style>
   </head>
