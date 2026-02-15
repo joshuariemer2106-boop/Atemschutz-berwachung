@@ -5,3 +5,8 @@ uploads/*
 *.pyc
 __pycache__/
 .env
+press_articles.json
+press_users.json
+press_settings.json
+press_settings.json
+press_servers.json

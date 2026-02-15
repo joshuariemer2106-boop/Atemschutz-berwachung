@@ -1,0 +1,229 @@
+﻿<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hauptmenue</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Teko:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-dark: #111317;
+        --tablet-shell: #2d3138;
+        --tablet-shell-2: #1f2228;
+        --screen-bg: #ddd9d0;
+        --line: #c3bdb0;
+        --red: #bb121d;
+        --red-2: #930c15;
+        --yellow: #f7cf2f;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(900px 420px at 80% -20%, #2b313b 0%, transparent 70%),
+          radial-gradient(700px 380px at -20% 120%, #1d222b 0%, transparent 65%),
+          var(--bg-dark);
+        padding: 16px;
+      }
+
+      .tablet {
+        width: min(900px, 96vw);
+        border-radius: 38px;
+        padding: 18px;
+        background: linear-gradient(160deg, var(--tablet-shell), var(--tablet-shell-2));
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+        position: relative;
+      }
+
+      .tablet::before {
+        content: "";
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 94px;
+        height: 12px;
+        border-radius: 999px;
+        background: #0e1116;
+      }
+
+      .camera-dot {
+        position: absolute;
+        top: 12px;
+        right: 44%;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #090b0f;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .screen {
+        border-radius: 26px;
+        overflow: hidden;
+        background: var(--screen-bg);
+        border: 5px solid #0e1116;
+        min-height: min(72vh, 760px);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .screen-head {
+        background: linear-gradient(120deg, var(--red), var(--red-2));
+        color: #fff;
+        border-bottom: 7px solid var(--yellow);
+        padding: 20px;
+      }
+
+      .brand {
+        font-family: "Teko", sans-serif;
+        letter-spacing: 1px;
+        font-size: clamp(30px, 5vw, 48px);
+        line-height: 1;
+        margin: 0;
+      }
+
+      .sub {
+        font-family: "Rajdhani", sans-serif;
+        font-weight: 700;
+        font-size: clamp(20px, 3.2vw, 34px);
+        color: var(--yellow);
+        margin: 4px 0 0;
+      }
+
+      .content {
+        padding: 22px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-family: "Rajdhani", sans-serif;
+        color: #4a4f58;
+      }
+
+      .chip {
+        background: #efebe0;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .menu-link {
+        display: block;
+        text-decoration: none;
+        font-family: "Rajdhani", sans-serif;
+        font-size: clamp(24px, 3.2vw, 34px);
+        font-weight: 700;
+        text-align: center;
+        padding: 18px;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.25);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      }
+
+      .menu-link.asw {
+        color: #fff;
+        background: linear-gradient(180deg, #d1262d, #a20f17);
+      }
+
+      .menu-link.presse {
+        color: #fff;
+        background: linear-gradient(180deg, #3e4653, #2b303a);
+      }
+
+      .menu-link.owner {
+        color: #fff;
+        background: linear-gradient(180deg, #1c5f96, #114166);
+      }
+
+      .menu-link.disabled {
+        opacity: .45;
+        pointer-events: none;
+      }
+
+      .footer-actions {
+        margin-top: 8px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .logout-btn {
+        font-family: "Rajdhani", sans-serif;
+        font-weight: 700;
+        font-size: 20px;
+        padding: 10px 34px;
+        border-radius: 10px;
+        border: 0;
+        color: #fff;
+        background: linear-gradient(180deg, #ce1f2b, #8e1119);
+        box-shadow: 0 10px 20px rgba(80, 9, 16, 0.32);
+      }
+
+      @media (max-width: 768px) {
+        .tablet {
+          border-radius: 28px;
+          padding: 12px;
+        }
+
+        .screen {
+          border-radius: 20px;
+          min-height: 78vh;
+        }
+
+        .content {
+          padding: 16px;
+          gap: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="tablet">
+      <div class="camera-dot"></div>
+      <section class="screen">
+        <header class="screen-head">
+          <h1 class="brand">BF MUENCHEN</h1>
+          <p class="sub">HAUPTMENUE</p>
+        </header>
+
+        <div class="content">
+          <div class="meta">
+            <span class="chip">Rolle: {{ role }}</span>
+            {% if server_name %}<span class="chip">Server: {{ server_name }}</span>{% endif %}
+            {% if server_code %}<span class="chip">Code: {{ server_code }}</span>{% endif %}
+          </div>
+
+          <a class="menu-link asw" href="/atemschutz">ATEMSCHUTZUEBERWACHUNG</a>
+
+          {% if role in ['owner', 'leitung', 'mitglied'] %}
+          <a class="menu-link presse" href="/presse/bereich">PRESSE</a>
+          {% else %}
+          <div class="menu-link presse disabled">PRESSE (GESPERRT)</div>
+          {% endif %}
+
+          {% if role == 'owner' %}
+          <a class="menu-link owner" href="/owner/settings">OWNER EINSTELLUNGEN</a>
+          {% endif %}
+
+          <div class="footer-actions">
+            <form method="post" action="/presse/logout">
+              <button class="logout-btn" type="submit">ABMELDEN</button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+

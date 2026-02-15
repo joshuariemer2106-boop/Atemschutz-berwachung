@@ -1,0 +1,52 @@
+﻿<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Owner Einstellungen</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      body { margin:0; min-height:100vh; background:linear-gradient(140deg,#1a1e26,#2c3440); display:flex; align-items:center; justify-content:center; }
+      .box { width:min(860px,95vw); background:#f5f5f5; border-radius:14px; padding:24px; box-shadow:0 18px 40px rgba(0,0,0,.35); }
+    </style>
+  </head>
+  <body>
+    <main class="box">
+      <h1 class="h3 mb-2">Owner Einstellungen</h1>
+      <p class="text-muted">Webhook-Verwaltung für Atemschutz und Presse.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" action="/owner/settings">
+        <h2 class="h5 mt-2">Atemschutz Webhooks</h2>
+        <div class="mb-2">
+          <label class="form-label">Atemschutz Webhook URL 1 (Pflicht)</label>
+          <input name="asw_webhook_url_1" class="form-control" required value="{{ settings.get('asw_webhook_url_1', '') }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Atemschutz Webhook URL 2 (optional)</label>
+          <input name="asw_webhook_url_2" class="form-control" value="{{ settings.get('asw_webhook_url_2', '') }}">
+        </div>
+
+        <h2 class="h5">Presse Webhooks</h2>
+        <div class="mb-2">
+          <label class="form-label">Presse Webhook URL 1 (Pflicht)</label>
+          <input name="webhook_url_1" class="form-control" required value="{{ settings.get('webhook_url_1', '') }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Presse Webhook URL 2 (optional)</label>
+          <input name="webhook_url_2" class="form-control" value="{{ settings.get('webhook_url_2', '') }}">
+        </div>
+
+        <button class="btn btn-dark" type="submit">Speichern</button>
+        <a href="/menu" class="btn btn-outline-secondary">Zurück</a>
+      </form>
+    </main>
+  </body>
+</html>

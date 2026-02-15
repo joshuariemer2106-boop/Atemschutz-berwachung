@@ -1,0 +1,490 @@
+﻿<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Presse Bereich</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      :root {
+        --bg: #f3efe7;
+        --panel: #ffffff;
+        --ink: #1d1f23;
+        --muted: #6a6f77;
+        --accent: #bf2f24;
+        --accent-dark: #97241c;
+        --line: #ded7cc;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(1200px 500px at 100% -10%, #e7ddd0 10%, transparent 70%),
+          radial-gradient(900px 400px at -10% 0%, #ece4d7 0%, transparent 70%),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      .shell {
+        width: min(1180px, 96vw);
+        margin: 18px auto;
+      }
+
+      .hero {
+        background: linear-gradient(120deg, var(--accent), var(--accent-dark));
+        color: #fff;
+        border-radius: 14px;
+        padding: 18px 20px;
+        box-shadow: 0 14px 30px rgba(93, 28, 20, 0.28);
+      }
+
+      .hero-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .role-pill {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.45fr 1fr;
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .form-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .template-card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+        background: #fcfbf8;
+        margin-bottom: 10px;
+      }
+
+      .hidden { display: none; }
+
+      .article {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 10px;
+        background: #fff;
+      }
+
+      .article pre {
+        white-space: pre-wrap;
+        margin: 8px 0 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        background: #fbfaf7;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .split-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+
+      @media (max-width: 980px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="hero-top">
+          <div>
+            <h1 class="h3 m-0">Presse Leitstelle</h1>
+            <div style="opacity:.9;font-size:14px">Entwurf, Freigabe und Versand in den Presse-Kanal</div>
+          </div>
+          <div class="d-flex gap-2">
+            <span class="role-pill">{{ name }} ({{ role }})</span>
+            <a href="/menu" class="btn btn-light btn-sm">Hauptmenue</a>
+            <form method="post" action="/presse/logout">
+              <button type="submit" class="btn btn-dark btn-sm">Abmelden</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mt-2">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} mb-2">{{ message }}</div>
+          {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="grid">
+        <div class="card">
+          <div class="form-title">
+            <h2 class="h5 m-0">Neuer Presse-Entwurf</h2>
+            <span class="muted">Pflichtfelder wie bei Atemschutz</span>
+          </div>
+
+          <form id="pressForm" method="post" action="/presse/artikel">
+            <div class="mb-2">
+              <label class="form-label">Vorlage</label>
+              <select id="templateType" name="template_type" class="form-select" required>
+                <option value="">Bitte waehlen</option>
+                <option value="einsatz">Einsatz</option>
+                <option value="befoerderung">Beförderungen</option>
+              </select>
+            </div>
+
+            <div id="einsatzFields" class="template-card hidden">
+              <div class="row g-2">
+                <div class="col-12"><label class="form-label">Titel</label><input id="e_titel" name="e_titel" class="form-control" data-required></div>
+                <div class="col-md-4"><label class="form-label">Datum</label><input id="e_datum" name="e_datum" class="form-control" placeholder="DD.MM.JJJJ" data-required></div>
+                <div class="col-md-4"><label class="form-label">Uhrzeit</label><input id="e_uhrzeit" name="e_uhrzeit" class="form-control" placeholder="00:00" data-required></div>
+                <div class="col-md-4"><label class="form-label">Stichwort</label><input id="e_stichwort" name="e_stichwort" class="form-control" data-required></div>
+                <div class="col-md-6"><label class="form-label">Einsatzkräfte</label><input id="e_kraefte" name="e_kraefte" class="form-control" data-required></div>
+                <div class="col-md-6"><label class="form-label">Standort</label><input id="e_standort" name="e_standort" class="form-control" data-required></div>
+                <div class="col-12"><label class="form-label">Lagebeschreibung</label><textarea id="e_lage" name="e_lage" class="form-control" rows="2" data-required></textarea></div>
+                <div class="col-12"><label class="form-label">Was ist passiert?</label><textarea id="e_passiert" name="e_passiert" class="form-control" rows="2" data-required></textarea></div>
+                <div class="col-12"><label class="form-label">Brandbekämpfung</label><textarea id="e_brand" name="e_brand" class="form-control" rows="2" data-required></textarea></div>
+                <div class="col-12"><label class="form-label">Führung</label><textarea id="e_fuehrung" name="e_fuehrung" class="form-control" rows="2" data-required></textarea></div>
+                <div class="col-12"><label class="form-label">Absicherung</label><textarea id="e_absicherung" name="e_absicherung" class="form-control" rows="2" data-required></textarea></div>
+                <div class="col-12"><label class="form-label">Hinweis für Anwohner</label><textarea id="e_hinweis" name="e_hinweis" class="form-control" rows="2" data-required></textarea></div>
+              </div>
+            </div>
+
+            <div id="befFields" class="template-card hidden">
+              <div class="row g-2">
+                <div class="col-12"><label class="form-label">Einleitung</label><textarea id="b_einleitung" name="b_einleitung" class="form-control" rows="3" data-required>Zu jeder guten Dienstbesprechung gehören auch die Beförderungen dazu und in dieser Woche wurde folgende Kameraden und Kameradinnen befördert</textarea></div>
+                <div class="col-12">
+                  <label class="form-label">Beförderungen eintragen</label>
+                  <div id="promotionRows" class="d-grid gap-2"></div>
+                  <button type="button" id="addPromotionRowBtn" class="btn btn-outline-dark btn-sm mt-2">+ Weitere Beförderung</button>
+                  <div class="form-text">Pro Zeile: Dienstgrad auswählen und Kamerad/in eintragen.</div>
+                </div>
+              </div>
+            </div>
+
+            <template id="promotionRowTemplate">
+              <div class="row g-2 align-items-end promotion-row">
+                <div class="col-md-6">
+                  <label class="form-label">Dienstgrad</label>
+                  <select class="form-select promotion-rank" data-bef-entry>
+                    <option value="">Bitte wählen</option>
+                    <option value="Brandmeister/in">Brandmeister/in</option>
+                    <option value="Oberbrandmeister/in">Oberbrandmeister/in</option>
+                    <option value="Hauptbrandmeister/in">Hauptbrandmeister/in</option>
+                    <option value="Brandinspektor/in">Brandinspektor/in</option>
+                    <option value="Brandinspektor/in mit Zulage">Brandinspektor/in mit Zulage</option>
+                    <option value="Brandoberinspektoranwärter/in">Brandoberinspektoranwärter/in</option>
+                    <option value="Brandoberinspektor/in">Brandoberinspektor/in</option>
+                    <option value="Brandamtmann/frau">Brandamtmann/frau</option>
+                    <option value="Brandamtsrat/rätin">Brandamtsrat/rätin</option>
+                    <option value="Brandreferendar/in">Brandreferendar/in</option>
+                    <option value="Brandrat/rätin">Brandrat/rätin</option>
+                    <option value="Brandoberrat/rätin">Brandoberrat/rätin</option>
+                    <option value="Branddirektor/in">Branddirektor/in</option>
+                    <option value="Leitende/r Branddirektor/in">Leitende/r Branddirektor/in</option>
+                  </select>
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label">Kamerad/in</label>
+                  <input type="text" class="form-control promotion-name" placeholder="Name(n)" data-bef-entry>
+                </div>
+                <div class="col-md-1 d-grid">
+                  <button type="button" class="btn btn-outline-danger btn-sm remove-row" title="Zeile entfernen">-</button>
+                </div>
+              </div>
+            </template>
+
+            <input id="articleTitle" name="title" type="hidden">
+            <textarea id="articleBody" name="body" class="d-none"></textarea>
+
+            <button type="submit" class="btn btn-danger">Speichern zur Freigabe</button>
+          </form>
+        </div>
+
+        <div>
+          {% if role == 'owner' or role == 'leitung' %}
+          <div class="card mb-3">
+            <div class="split-head">
+              <h2 class="h6 m-0">Account erstellen</h2>
+              <span class="badge text-bg-dark">{{ users|length }} Nutzer</span>
+            </div>
+            <form method="post" action="/presse/user/create">
+              <div class="mb-2">
+                <label class="form-label">Benutzername</label>
+                <input name="username" class="form-control" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Anzeigename</label>
+                <input name="display_name" class="form-control" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Rolle</label>
+                <select name="role" class="form-select" required>
+                  <option value="mitglied">Mitglied</option>
+                  {% if role == 'owner' %}
+                  <option value="leitung">Leitung</option>
+                  {% endif %}
+                </select>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Passwort</label>
+                <input type="password" name="password" class="form-control" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Passwort wiederholen</label>
+                <input type="password" name="password_confirm" class="form-control" required>
+              </div>
+              <button type="submit" class="btn btn-dark btn-sm">Account anlegen</button>
+            </form>
+            <hr>
+            {% for u in users %}
+              <div class="d-flex justify-content-between align-items-center small mb-1">
+                <span><strong>{{ u.username }}</strong> ({{ u.display_name }})</span>
+                <span class="badge text-bg-secondary">{{ u.role }}</span>
+              </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <div class="card mb-3">
+            <div class="split-head">
+              <h2 class="h6 m-0">Offene Artikel</h2>
+              <span class="badge text-bg-warning">{{ pending_articles|length }}</span>
+            </div>
+            {% if pending_articles %}
+              {% for article in pending_articles %}
+                <div class="article">
+                  <div><strong>{{ article.title }}</strong></div>
+                  <div class="muted">Von {{ article.author_name }} ({{ article.author_role }}) · {{ article.created_at }}</div>
+                  <pre>{{ article.body }}</pre>
+                  {% if role == 'leitung' or role == 'owner' %}
+                  <form method="post" action="/presse/artikel/{{ article.id }}/freigeben">
+                    <button type="submit" class="btn btn-success btn-sm mt-2">Freigeben und senden</button>
+                  </form>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            {% else %}
+              <p class="muted m-0">Keine offenen Artikel.</p>
+            {% endif %}
+          </div>
+
+          <div class="card">
+            <div class="split-head">
+              <h2 class="h6 m-0">Freigegebene Artikel</h2>
+              <span class="badge text-bg-success">{{ approved_articles|length }}</span>
+            </div>
+            {% if approved_articles %}
+              {% for article in approved_articles %}
+                <div class="article">
+                  <div><strong>{{ article.title }}</strong></div>
+                  <div class="muted">Freigegeben von {{ article.approved_by }} · {{ article.approved_at }}</div>
+                  <pre>{{ article.body }}</pre>
+                </div>
+              {% endfor %}
+            {% else %}
+              <p class="muted m-0">Noch keine freigegebenen Artikel.</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById('pressForm');
+      const typeSelect = document.getElementById('templateType');
+      const einsatzFields = document.getElementById('einsatzFields');
+      const befFields = document.getElementById('befFields');
+      const articleTitle = document.getElementById('articleTitle');
+      const articleBody = document.getElementById('articleBody');
+      const promotionRows = document.getElementById('promotionRows');
+      const promotionRowTemplate = document.getElementById('promotionRowTemplate');
+      const addPromotionRowBtn = document.getElementById('addPromotionRowBtn');
+      const promotionRankOrder = [
+        'Brandmeister/in',
+        'Oberbrandmeister/in',
+        'Hauptbrandmeister/in',
+        'Brandinspektor/in',
+        'Brandinspektor/in mit Zulage',
+        'Brandoberinspektoranwärter/in',
+        'Brandoberinspektor/in',
+        'Brandamtmann/frau',
+        'Brandamtsrat/rätin',
+        'Brandreferendar/in',
+        'Brandrat/rätin',
+        'Brandoberrat/rätin',
+        'Branddirektor/in',
+        'Leitende/r Branddirektor/in',
+      ];
+
+      function setRequired(section, active) {
+        section.querySelectorAll('[data-required]').forEach((el) => {
+          el.required = active;
+        });
+      }
+
+      function updateTemplateView() {
+        const t = typeSelect.value;
+        const einsatz = t === 'einsatz';
+        const bef = t === 'befoerderung';
+        einsatzFields.classList.toggle('hidden', !einsatz);
+        befFields.classList.toggle('hidden', !bef);
+        setRequired(einsatzFields, einsatz);
+        setRequired(befFields, bef);
+        promotionRows.querySelectorAll('[data-bef-entry]').forEach((el) => {
+          el.required = bef;
+        });
+      }
+
+      function addPromotionRow() {
+        const node = promotionRowTemplate.content.firstElementChild.cloneNode(true);
+        promotionRows.appendChild(node);
+        updateTemplateView();
+      }
+
+      addPromotionRowBtn.addEventListener('click', addPromotionRow);
+      promotionRows.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('remove-row')) return;
+        const rows = promotionRows.querySelectorAll('.promotion-row');
+        if (rows.length <= 1) return;
+        e.target.closest('.promotion-row').remove();
+      });
+
+      addPromotionRow();
+      typeSelect.addEventListener('change', updateTemplateView);
+      updateTemplateView();
+
+      form.addEventListener('submit', (e) => {
+        if (!form.checkValidity()) {
+          e.preventDefault();
+          form.reportValidity();
+          return;
+        }
+
+        const t = typeSelect.value;
+        if (t === 'einsatz') {
+          const titel = document.getElementById('e_titel').value.trim();
+          articleTitle.value = titel;
+          articleBody.value = `🔥 ${titel}
+----------------------------------------------------------------------------------------------
+
+⏰  | ${document.getElementById('e_datum').value.trim()} | ${document.getElementById('e_uhrzeit').value.trim()}
+📟  | ${document.getElementById('e_stichwort').value.trim()}
+🚒  | ${document.getElementById('e_kraefte').value.trim()}
+📍  | ${document.getElementById('e_standort').value.trim()}
+
+${document.getElementById('e_lage').value.trim()}
+
+Was ist passiert? ${document.getElementById('e_passiert').value.trim()}
+
+Unsere Maßnahmen vor Ort:
+
+Brandbekämpfung:
+${document.getElementById('e_brand').value.trim()}
+
+Führung:
+${document.getElementById('e_fuehrung').value.trim()}
+
+Absicherung:
+${document.getElementById('e_absicherung').value.trim()}
+
+Wichtiger Hinweis für Anwohner:
+${document.getElementById('e_hinweis').value.trim()}
+
+Wir halten euch über die weitere Entwicklung auf dem Laufenden.
+
+Eure Feuerwehr München – Sicher für euch im Einsatz! 🚒💨`;
+          if (!articleTitle.value.trim() || !articleBody.value.trim()) {
+            e.preventDefault();
+            alert('Bitte Vorlage auswaehlen und alle Pflichtfelder ausfuellen.');
+          }
+          return;
+        }
+
+        const grouped = {};
+        const rows = promotionRows.querySelectorAll('.promotion-row');
+        for (const row of rows) {
+          const rank = row.querySelector('.promotion-rank').value.trim();
+          const name = row.querySelector('.promotion-name').value.trim();
+          if (!rank && !name) continue;
+          if (!rank || !name) {
+            e.preventDefault();
+            alert('Bitte pro Zeile Dienstgrad und Kamerad/in ausfuellen.');
+            return;
+          }
+          if (!grouped[rank]) grouped[rank] = [];
+          grouped[rank].push(name);
+        }
+
+        const lines = [];
+        for (const rank of promotionRankOrder) {
+          if (grouped[rank] && grouped[rank].length) {
+            lines.push(`${rank}: ${grouped[rank].join(', ')}`);
+          }
+        }
+        const extraRanks = Object.keys(grouped).filter((r) => !promotionRankOrder.includes(r)).sort();
+        for (const rank of extraRanks) {
+          lines.push(`${rank}: ${grouped[rank].join(', ')}`);
+        }
+        if (!lines.length) {
+          e.preventDefault();
+          alert('Bitte mindestens eine Beförderung eintragen.');
+          return;
+        }
+
+        articleTitle.value = 'Beförderungen';
+        articleBody.value = `<:BFMuenchen:1386805907777912913> Beförderungen <:BFMuenchen:1386805907777912913>
+
+${document.getElementById('b_einleitung').value.trim()}
+
+Befördert wurden zur/zum
+
+${lines.join('\n\n')}
+
+
+Wir sind stolz auf jeden Einzelnen von Euch und gratulieren  mit einen dreifachen
+GUT WEHR`;
+
+        if (!articleTitle.value.trim() || !articleBody.value.trim()) {
+          e.preventDefault();
+          alert('Bitte Vorlage auswaehlen und alle Pflichtfelder ausfuellen.');
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="de">
   <head>
     <meta charset="utf-8">
@@ -82,6 +82,13 @@
             <div style="font-size:14px;opacity:0.95">BF MÜNCHEN</div>
             <div class="title">ATEMSCHUTZÜBERWACHUNG</div>
           </div>
+          <div class="sub">{{ user_name }} ({{ user_role }})</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <a href="/menu" class="btn btn-light btn-sm">Hauptmenü</a>
+            <form method="post" action="/presse/logout" style="margin:0">
+              <button type="submit" class="btn btn-dark btn-sm">Abmelden</button>
+            </form>
+          </div>
           <div class="logo"><img src="/static/bf_muenchen.png" alt="BF München"></div>
         </div>
 
@@ -91,15 +98,15 @@
         <div class="top-row">
           <div style="flex:1">
             <label class="small">Einsatznummer:</label>
-            <input name="einsatznummer" class="form-control" placeholder="Einsatznummer eingeben">
+            <input name="einsatznummer" class="form-control" placeholder="Einsatznummer eingeben" required>
           </div>
           <div style="flex:1;margin-left:12px">
             <label class="small">Einsatzstichwort:</label>
-            <input name="einsatzstichwort" class="form-control" placeholder="Stichwort eingeben">
+            <input name="einsatzstichwort" class="form-control" placeholder="Stichwort eingeben" required>
           </div>
           <div style="width:220px;margin-left:12px">
             <label class="small">Fahrzeug:</label>
-            <select name="fahrzeug" class="form-select">
+            <select name="fahrzeug" class="form-select" required>
               <option value="">-- wählen --</option>
               <option>ELW: 12/1</option>
               <option>DLK: 30/1</option>
@@ -148,10 +155,10 @@
             const row = document.createElement('div');
             row.className = 'trupp-row member-row';
             row.innerHTML = `
-              <div class="member-field" data-label="Name"><input name="trupps[${truppIndex}][members][${memberIndex}][name]" placeholder=""></div>
-              <div class="member-field" data-label="Startdruck"><div class="field-with-suffix"><input type="number" inputmode="numeric" name="trupps[${truppIndex}][members][${memberIndex}][start]" placeholder=""><span class="suffix">bar</span></div></div>
-              <div class="member-field" data-label="Restdruck"><div class="field-with-suffix"><input type="number" inputmode="numeric" name="trupps[${truppIndex}][members][${memberIndex}][rest]" placeholder=""><span class="suffix">bar</span></div></div>
-              <div class="member-field" data-label="Endzeit" style="display:flex;gap:8px;align-items:center"><input name="trupps[${truppIndex}][members][${memberIndex}][end]" placeholder=""><button type=\"button\" class=\"btn-remove-member btn btn-outline-secondary btn-sm\">-</button></div>
+              <div class="member-field" data-label="Name"><input name="trupps[${truppIndex}][members][${memberIndex}][name]" placeholder="" required></div>
+              <div class="member-field" data-label="Startdruck"><div class="field-with-suffix"><input type="number" inputmode="numeric" name="trupps[${truppIndex}][members][${memberIndex}][start]" placeholder="" min="0" required><span class="suffix">bar</span></div></div>
+              <div class="member-field" data-label="Restdruck"><div class="field-with-suffix"><input type="number" inputmode="numeric" name="trupps[${truppIndex}][members][${memberIndex}][rest]" placeholder="" min="0" required><span class="suffix">bar</span></div></div>
+              <div class="member-field" data-label="Endzeit" style="display:flex;gap:8px;align-items:center"><input name="trupps[${truppIndex}][members][${memberIndex}][end]" placeholder="" required><button type=\"button\" class=\"btn-remove-member btn btn-outline-secondary btn-sm\">-</button></div>
             `;
             const removeBtn = row.querySelector('.btn-remove-member');
             removeBtn.addEventListener('click', ()=>{ row.remove(); });
@@ -232,6 +239,10 @@
 
           aswForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!aswForm.checkValidity()) {
+              aswForm.reportValidity();
+              return;
+            }
             
             const btnSave = document.querySelector('.save-btn');
             const originalText = btnSave.textContent;
@@ -253,7 +264,7 @@
                 formData.append('screenshot', blob, 'screenshot.png');
                 
                 // send to backend
-                const response = await fetch('/', { method: 'POST', body: formData });
+                const response = await fetch('/atemschutz', { method: 'POST', body: formData });
                 
                 if (response.ok) {
                   alertContainer.innerHTML = '<div class="alert alert-success">Eintrag erfolgreich gesendet!</div>';
@@ -279,3 +290,6 @@
     </div>
   </body>
 </html>
+
+
+
