@@ -865,9 +865,10 @@ def presse_login():
                 None,
             )
 
-        # Fallback login without server-code for convenience after logout:
-        # if exactly one user matches name+password globally, use that account.
-        if not user and not server_code:
+        # Fallback login by identifier+password across all servers:
+        # if exactly one account matches globally, use that account even when
+        # a stale/incorrect server-code was prefilled.
+        if not user:
             candidates = [
                 u
                 for u in users
