@@ -45,6 +45,13 @@
           <input name="webhook_url_2" class="form-control" value="{{ settings.get('webhook_url_2', '') }}">
         </div>
 
+        <h2 class="h5">Hauptmenü Design</h2>
+        <div class="mb-3">
+          <label class="form-label">Hintergrundbild URL (optional)</label>
+          <input name="menu_background_url" class="form-control" placeholder="https://..." value="{{ settings.get('menu_background_url', '') }}">
+          <div class="form-text">Wenn leer, wird der Standard-Hintergrund verwendet.</div>
+        </div>
+
         <button class="btn btn-dark" type="submit">Speichern</button>
         <a href="/menu" class="btn btn-outline-secondary">Zurück</a>
       </form>

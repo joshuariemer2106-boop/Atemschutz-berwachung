@@ -1,222 +1,234 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="de">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hauptmenue</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Teko:wght@500;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        --bg-dark: #111317;
-        --tablet-shell: #2d3138;
-        --tablet-shell-2: #1f2228;
-        --screen-bg: #ddd9d0;
-        --line: #c3bdb0;
-        --red: #bb121d;
-        --red-2: #930c15;
-        --yellow: #f7cf2f;
+        --text: #f4f6ff;
+        --muted: rgba(244, 246, 255, 0.78);
+        --tile-bg: rgba(16, 20, 31, 0.44);
+        --tile-line: rgba(255, 255, 255, 0.18);
+        --dock-bg: rgba(8, 11, 19, 0.66);
       }
+
+      * { box-sizing: border-box; }
 
       body {
         margin: 0;
         min-height: 100vh;
+        color: var(--text);
+        font-family: "Segoe UI", "Trebuchet MS", sans-serif;
         background:
-          radial-gradient(900px 420px at 80% -20%, #2b313b 0%, transparent 70%),
-          radial-gradient(700px 380px at -20% 120%, #1d222b 0%, transparent 65%),
-          var(--bg-dark);
-        padding: 0;
-      }
-
-      .tablet {
-        width: 100vw;
-        min-height: 100vh;
-        border-radius: 0;
-        padding: 0;
-        background: linear-gradient(160deg, var(--tablet-shell), var(--tablet-shell-2));
-        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(255, 255, 255, 0.08);
-        position: relative;
-      }
-
-      .tablet::before {
-        content: "";
-        position: absolute;
-        top: 8px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 94px;
-        height: 12px;
-        border-radius: 999px;
-        background: #0e1116;
-      }
-
-      .camera-dot {
-        position: absolute;
-        top: 12px;
-        right: 44%;
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: #090b0f;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+          linear-gradient(120deg, rgba(7, 9, 18, 0.78), rgba(11, 16, 28, 0.58)),
+          {% if menu_background_url %}url('{{ menu_background_url }}'){% else %}radial-gradient(1200px 800px at 52% 40%, #4b2cff 0%, #20104d 40%, #130a2e 70%, #090e1b 100%){% endif %};
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
       }
 
       .screen {
-        border-radius: 0;
-        overflow: hidden;
-        background: var(--screen-bg);
-        border: 0;
         min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .screen-head {
-        background: linear-gradient(120deg, var(--red), var(--red-2));
-        color: #fff;
-        border-bottom: 7px solid var(--yellow);
-        padding: 20px;
-      }
-
-      .brand {
-        font-family: "Teko", sans-serif;
-        letter-spacing: 1px;
-        font-size: clamp(30px, 5vw, 48px);
-        line-height: 1;
-        margin: 0;
-      }
-
-      .sub {
-        font-family: "Rajdhani", sans-serif;
-        font-weight: 700;
-        font-size: clamp(20px, 3.2vw, 34px);
-        color: var(--yellow);
-        margin: 4px 0 0;
-      }
-
-      .content {
-        padding: 22px;
         display: grid;
-        gap: 14px;
+        grid-template-rows: auto 1fr auto;
       }
 
-      .meta {
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 18px;
+        background: linear-gradient(180deg, rgba(8, 11, 18, 0.62), rgba(8, 11, 18, 0.1));
+        border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(3px);
+      }
+
+      .top-left {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: .4px;
+      }
+
+      .top-right {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        font-family: "Rajdhani", sans-serif;
-        color: #4a4f58;
       }
 
       .chip {
-        background: #efebe0;
-        border: 1px solid var(--line);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.25);
         border-radius: 999px;
-        padding: 4px 10px;
-        font-size: 14px;
-        font-weight: 700;
+        padding: 5px 10px;
       }
 
-      .menu-link {
-        display: block;
+      .apps {
+        align-self: start;
+        padding: 26px 22px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 16px;
+        width: min(760px, 100%);
+      }
+
+      .app {
         text-decoration: none;
-        font-family: "Rajdhani", sans-serif;
-        font-size: clamp(24px, 3.2vw, 34px);
-        font-weight: 700;
-        text-align: center;
-        padding: 18px;
+        color: var(--text);
+        display: grid;
+        justify-items: center;
+        gap: 8px;
+        padding: 10px 8px;
         border-radius: 12px;
-        border: 1px solid rgba(0, 0, 0, 0.25);
-        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transition: transform .14s ease, background-color .14s ease, border-color .14s ease;
+        border: 1px solid transparent;
       }
 
-      .menu-link.asw {
-        color: #fff;
-        background: linear-gradient(180deg, #d1262d, #a20f17);
+      .app:hover {
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.18);
       }
 
-      .menu-link.presse {
-        color: #fff;
-        background: linear-gradient(180deg, #3e4653, #2b303a);
+      .icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 18px;
+        border: 1px solid var(--tile-line);
+        background: var(--tile-bg);
+        display: grid;
+        place-items: center;
+        font-size: 34px;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.08);
       }
 
-      .menu-link.owner {
-        color: #fff;
-        background: linear-gradient(180deg, #1c5f96, #114166);
+      .label {
+        text-align: center;
+        font-size: 13px;
+        line-height: 1.2;
+        font-weight: 600;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
       }
 
-      .menu-link.disabled {
-        opacity: .45;
+      .disabled {
+        opacity: 0.45;
         pointer-events: none;
       }
 
-      .footer-actions {
-        margin-top: 8px;
+      .dock {
+        margin: 0 auto 12px;
+        width: min(700px, calc(100% - 24px));
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: var(--dock-bg);
+        padding: 10px 12px;
         display: flex;
         justify-content: center;
+        gap: 10px;
+        backdrop-filter: blur(7px);
       }
 
-      .logout-btn {
-        font-family: "Rajdhani", sans-serif;
-        font-weight: 700;
-        font-size: 20px;
-        padding: 10px 34px;
-        border-radius: 10px;
+      .dock-item {
         border: 0;
-        color: #fff;
-        background: linear-gradient(180deg, #ce1f2b, #8e1119);
-        box-shadow: 0 10px 20px rgba(80, 9, 16, 0.32);
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 700;
+        padding: 8px 13px;
+        background: rgba(255, 255, 255, 0.1);
       }
 
-      @media (max-width: 768px) {
-        .content {
-          padding: 16px;
+      .dock-item.logout {
+        background: linear-gradient(180deg, #c42837, #861524);
+      }
+
+      .dock-item.home {
+        background: linear-gradient(180deg, #2a8ed1, #1b5f8c);
+      }
+
+      @media (max-width: 740px) {
+        .apps {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 10px;
+          padding: 16px 10px;
+          width: 100%;
+        }
+        .icon {
+          width: 58px;
+          height: 58px;
+          border-radius: 14px;
+          font-size: 28px;
+        }
+        .top-left {
+          font-size: 17px;
+        }
+        .chip {
+          font-size: 11px;
+          padding: 4px 8px;
         }
       }
     </style>
   </head>
   <body>
-    <main class="tablet">
-      <div class="camera-dot"></div>
-      <section class="screen">
-        <header class="screen-head">
-          <h1 class="brand">BF MÜNCHEN</h1>
-          <p class="sub">EINSATZSYSTEM</p>
-        </header>
-
-        <div class="content">
-          <div class="meta">
-            <span class="chip">Rolle: {{ role_label }}</span>
-            {% if server_name %}<span class="chip">Server: {{ server_name }}</span>{% endif %}
-            {% if server_code %}<span class="chip">Code: {{ server_code }}</span>{% endif %}
-          </div>
-
-          <a class="menu-link asw" href="/atemschutz">ATEMSCHUTZUEBERWACHUNG</a>
-
-          {% if can_access_press %}
-          <a class="menu-link presse" href="/presse/bereich">PRESSE</a>
-          {% else %}
-          <div class="menu-link presse disabled">PRESSE (GESPERRT)</div>
-          {% endif %}
-
-          {% if can_access_staff_list %}
-          <a class="menu-link presse" href="/mitarbeiter">MITARBEITERLISTE</a>
-          {% else %}
-          <div class="menu-link presse disabled">MITARBEITERLISTE (GESPERRT)</div>
-          {% endif %}
-
-          {% if can_access_owner_settings %}
-          <a class="menu-link owner" href="/owner/settings">SYSTEM EINSTELLUNGEN</a>
-          {% endif %}
-
-          <div class="footer-actions">
-            <form method="post" action="/presse/logout">
-              <button class="logout-btn" type="submit">ABMELDEN</button>
-            </form>
-          </div>
+    <main class="screen">
+      <header class="topbar">
+        <div class="top-left">Einsatzsystem</div>
+        <div class="top-right">
+          <span class="chip">Rolle: {{ role_label }}</span>
+          {% if server_name %}<span class="chip">Server: {{ server_name }}</span>{% endif %}
+          {% if server_code %}<span class="chip">Code: {{ server_code }}</span>{% endif %}
         </div>
+      </header>
+
+      <section class="apps">
+        <a class="app" href="/atemschutz">
+          <div class="icon">O2</div>
+          <div class="label">Atemschutz</div>
+        </a>
+
+        {% if can_access_press %}
+        <a class="app" href="/presse/bereich">
+          <div class="icon">PR</div>
+          <div class="label">Presse</div>
+        </a>
+        {% else %}
+        <div class="app disabled">
+          <div class="icon">PR</div>
+          <div class="label">Presse gesperrt</div>
+        </div>
+        {% endif %}
+
+        {% if can_access_staff_list %}
+        <a class="app" href="/mitarbeiter">
+          <div class="icon">ML</div>
+          <div class="label">Mitarbeiterliste</div>
+        </a>
+        {% else %}
+        <div class="app disabled">
+          <div class="icon">ML</div>
+          <div class="label">Mitarbeiterliste gesperrt</div>
+        </div>
+        {% endif %}
+
+        {% if can_access_owner_settings %}
+        <a class="app" href="/owner/settings">
+          <div class="icon">OP</div>
+          <div class="label">Owner Einstellungen</div>
+        </a>
+        {% endif %}
       </section>
+
+      <footer class="dock">
+        <a class="dock-item home" href="/">Start</a>
+        <a class="dock-item" href="/presse">Login</a>
+        <form method="post" action="/presse/logout">
+          <button class="dock-item logout" type="submit">Abmelden</button>
+        </form>
+      </footer>
     </main>
   </body>
 </html>

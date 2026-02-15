@@ -437,12 +437,14 @@ def menu():
     server_id = current_server_id()
     role = get_press_role()
     role_configs = get_role_configs(server_id)
+    settings = load_press_settings_for(server_id)
     return render_template(
         "menu.html",
         role=role,
         role_label=role_configs.get(role, {}).get("label", role),
         server_name=session.get("server_name", ""),
         server_code=session.get("server_code", ""),
+        menu_background_url=(settings.get("menu_background_url", "") or "").strip(),
         can_access_press=has_permission("presse_access", role=role, server_id=server_id),
         can_access_staff_list=has_permission("staff_list_access", role=role, server_id=server_id),
         can_access_owner_settings=(role == "owner"),
@@ -1066,6 +1068,7 @@ def owner_settings():
         asw_webhook_url_2 = request.form.get("asw_webhook_url_2", "").strip()
         webhook_url_1 = request.form.get("webhook_url_1", "").strip()
         webhook_url_2 = request.form.get("webhook_url_2", "").strip()
+        menu_background_url = request.form.get("menu_background_url", "").strip()
 
         if not asw_webhook_url_1:
             flash("Atemschutz Webhook URL 1 ist erforderlich.", "danger")
@@ -1082,6 +1085,7 @@ def owner_settings():
                 "asw_webhook_url_2": asw_webhook_url_2,
                 "webhook_url_1": webhook_url_1,
                 "webhook_url_2": webhook_url_2,
+                "menu_background_url": menu_background_url,
                 "role_configs": role_configs,
                 "updated_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
                 "updated_by": session.get("presse_username", ""),
