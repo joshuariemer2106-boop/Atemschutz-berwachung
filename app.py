@@ -976,17 +976,51 @@ def presse_owner_setup():
         )
         save_press_servers(servers)
 
-        users.append(
-            {
-                "username": username,
-                "display_name": display_name,
-                "role": "owner",
-                "server_id": server_id,
-                "password_hash": generate_password_hash(password),
-                "created_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
-            }
-        )
+        owner_user = {
+            "username": username,
+            "display_name": display_name,
+            "role": "owner",
+            "server_id": server_id,
+            "password_hash": generate_password_hash(password),
+            "created_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
+        }
+        users.append(owner_user)
         save_press_users(users)
+
+        # Ensure server creation always includes a persisted owner account.
+        persisted_users = load_press_users()
+        persisted_owner = next(
+            (
+                u
+                for u in persisted_users
+                if u.get("server_id") == server_id
+                and u.get("username", "").strip().lower() == username
+                and u.get("role") == "owner"
+            ),
+            None,
+        )
+        if not persisted_owner:
+            repaired_users = persisted_users if isinstance(persisted_users, list) else []
+            repaired_users.append(owner_user)
+            save_press_users(repaired_users)
+            persisted_users = load_press_users()
+            persisted_owner = next(
+                (
+                    u
+                    for u in persisted_users
+                    if u.get("server_id") == server_id
+                    and u.get("username", "").strip().lower() == username
+                    and u.get("role") == "owner"
+                ),
+                None,
+            )
+
+        if not persisted_owner:
+            repaired_servers = [s for s in load_press_servers() if s.get("id") != server_id]
+            save_press_servers(repaired_servers)
+            flash("Server konnte nicht vollständig erstellt werden (Owner nicht gespeichert). Bitte erneut versuchen.", "danger")
+            return redirect("/presse/owner/setup")
+
         save_press_settings_for(
             server_id,
             {
